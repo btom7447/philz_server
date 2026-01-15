@@ -13,6 +13,7 @@ import tourRoutes from "./routes/tours";
 import inquiryRoutes from "./routes/inquiries";
 import testimonialRoutes from "./routes/testimonial";
 import paymentRoutes from "./routes/payment";
+import uploadRoutes from "./routes/upload";
 
 // Middleware
 import errorHandler from "./middleware/errorHandler";
@@ -89,6 +90,7 @@ app.use("/api/tours", tourRoutes);
 app.use("/api/inquiries", inquiryRoutes);
 app.use("/api/testimonials", testimonialRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // ---------------- Error Handling ----------------
 app.use(errorHandler);

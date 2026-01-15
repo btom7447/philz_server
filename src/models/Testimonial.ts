@@ -1,16 +1,26 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface ITestimonial extends Document {
-  userId: mongoose.Types.ObjectId;
+  name: string;
+  title: string;
   content: string;
+  rating: number;
+  image?: string;
+  imagePublicId?: string;
   approved: boolean;
+  isDeleted: boolean;
 }
 
 const testimonialSchema: Schema<ITestimonial> = new Schema(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    name: { type: String, required: true },
+    title: { type: String, required: true },
     content: { type: String, required: true },
-    approved: { type: Boolean, default: false },
+    rating: { type: Number, min: 1, max: 5, required: true },
+    image: { type: String },
+    imagePublicId: { type: String },
+    approved: { type: Boolean, default: false, index: true },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -19,4 +29,5 @@ const Testimonial: Model<ITestimonial> = mongoose.model<ITestimonial>(
   "Testimonial",
   testimonialSchema
 );
+
 export default Testimonial;
