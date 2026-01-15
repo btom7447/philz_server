@@ -6,13 +6,11 @@ const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  const statusCode = err.statusCode || 500;
-  const message = err.message || "Server Error";
-  if (process.env.NODE_ENV === "production") {
-    res.status(statusCode).json({ message });
-  } else {
-    res.status(statusCode).json({ message, stack: err.stack });
-  }
+  console.error(err); // <-- log the actual error for dev
+  res.status(err.statusCode || 500).json({
+    message: err.message || "Server error",
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+  });
 };
 
 export default errorHandler;

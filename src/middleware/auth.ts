@@ -18,12 +18,14 @@ export const protect = async (
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id).select("-password");
     if (!user) return res.status(401).json({ message: "Not authorized" });
+
     req.user = user;
     next();
   } catch (err) {
-    return res.status(401).json({ message: "Token invalid" });
+    console.error("JWT verification error:", err);
+    return res.status(401).json({ message: "Token invalid or expired" });
   }
 };
 
