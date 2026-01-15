@@ -2,9 +2,12 @@ import { Router } from "express";
 import {
   createInquiry,
   getAllInquiries,
+  getPropertyInquiries,
 } from "../controllers/inquiryController";
 import { protect, authorize } from "../middleware/auth";
 import { publicLimiter } from "../middleware/rateLimiter";
+
+const router = Router();
 
 /**
  * @swagger
@@ -12,8 +15,6 @@ import { publicLimiter } from "../middleware/rateLimiter";
  *   name: Inquiries
  *   description: Property inquiries
  */
-
-const router = Router();
 
 /**
  * @swagger
@@ -27,15 +28,23 @@ const router = Router();
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - phone
+ *               - message
  *             properties:
  *               name:
  *                 type: string
  *               email:
  *                 type: string
+ *               phone:
+ *                 type: string
  *               message:
  *                 type: string
  *               propertyId:
  *                 type: string
+ *                 description: Optional property ID
  *     responses:
  *       201:
  *         description: Inquiry submitted
@@ -55,5 +64,24 @@ router.post("/", publicLimiter, createInquiry);
  *         description: List of inquiries
  */
 router.get("/", protect, authorize("super-admin"), getAllInquiries);
+
+/**
+ * @swagger
+ * /api/inquiries/property/{propertyId}:
+ *   get:
+ *     summary: Get all inquiries for a specific property (public)
+ *     tags: [Inquiries]
+ *     parameters:
+ *       - in: path
+ *         name: propertyId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Property ID
+ *     responses:
+ *       200:
+ *         description: List of inquiries for the property
+ */
+router.get("/property/:propertyId", getPropertyInquiries);
 
 export default router;
