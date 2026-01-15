@@ -4,9 +4,11 @@ export interface ITourRequest extends Document {
   propertyId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   type: "virtual" | "in-person";
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "canceled";
+  tourTime: Date;
   requestedAt: Date;
   approvedBy?: mongoose.Types.ObjectId;
+  rescheduled?: boolean;
 }
 
 const tourRequestSchema: Schema<ITourRequest> = new Schema(
@@ -15,19 +17,31 @@ const tourRequestSchema: Schema<ITourRequest> = new Schema(
       type: Schema.Types.ObjectId,
       ref: "Property",
       required: true,
+      index: true,
     },
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     type: { type: String, enum: ["virtual", "in-person"], required: true },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "approved", "rejected", "canceled"],
       default: "pending",
+      index: true,
     },
+    tourTime: { type: Date, required: true, index: true },
     requestedAt: { type: Date, default: Date.now },
     approvedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    rescheduled: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
+
+// Compound index for common queries: user + status + tourTime
+tourRequestSchema.index({ userId: 1, status: 1, tourTime: 1 });
 
 const TourRequest: Model<ITourRequest> = mongoose.model<ITourRequest>(
   "TourRequest",
