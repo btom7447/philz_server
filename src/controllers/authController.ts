@@ -8,7 +8,7 @@ import { generateToken } from "../utils/generateToken";
 // ----------------------
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, phone, password } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser)
@@ -18,7 +18,7 @@ export const register = async (req: Request, res: Response) => {
       ? "super-admin"
       : "client";
 
-    const user = await User.create({ name, email, password, role });
+    const user = await User.create({ name, email, phone, password, role });
 
     const token = generateToken(user._id.toString(), user.role);
 
@@ -28,6 +28,7 @@ export const register = async (req: Request, res: Response) => {
         id: user._id.toString(),
         name: user.name,
         email: user.email,
+        phone: user.phone,
         role: user.role,
       },
     });

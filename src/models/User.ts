@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 export interface IUser extends Document {
   name: string;
   email: string;
+  phone: string;
   password: string;
   role: "super-admin" | "client";
   resetPasswordToken?: string;
@@ -15,12 +16,13 @@ const userSchema: Schema<IUser> = new Schema(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, lowercase: true },
+    phone: { type: String, required: false },
     password: { type: String, required: true, select: false }, // hide password by default
     role: { type: String, enum: ["super-admin", "client"], default: "client" },
     resetPasswordToken: { type: String },
     resetPasswordExpire: { type: Number },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Pre-save hook to hash password
