@@ -55,7 +55,7 @@ router.post("/", publicLimiter, createInquiry);
  * @swagger
  * /api/inquiries:
  *   get:
- *     summary: Get all inquiries (super-admin only)
+ *     summary: Get all inquiries (admin only)
  *     tags: [Inquiries]
  *     security:
  *       - bearerAuth: []
@@ -63,7 +63,7 @@ router.post("/", publicLimiter, createInquiry);
  *       200:
  *         description: List of inquiries
  */
-router.get("/", protect, authorize("super-admin"), getAllInquiries);
+router.get("/", protect, authorize("admin"), getAllInquiries);
 
 /**
  * @swagger

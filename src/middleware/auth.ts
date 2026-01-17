@@ -4,7 +4,7 @@ import User, { IUser } from "../models/User";
 
 interface JwtPayload {
   id: string;
-  role: "super-admin" | "client";
+  role: "admin" | "user";
 }
 
 export const protect = async (
@@ -30,7 +30,7 @@ export const protect = async (
 };
 
 export const authorize =
-  (...roles: ("super-admin" | "client")[]) =>
+  (...roles: ("admin" | "user")[]) =>
   (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !roles.includes(req.user.role)) {
       return res.status(403).json({ message: "Forbidden" });

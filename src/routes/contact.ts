@@ -50,7 +50,7 @@ router.post("/", publicLimiter, createContact);
  * @swagger
  * /api/contact:
  *   get:
- *     summary: Get all contact messages (super-admin only)
+ *     summary: Get all contact messages (admin only)
  *     tags: [Contact]
  *     security:
  *       - bearerAuth: []
@@ -58,6 +58,6 @@ router.post("/", publicLimiter, createContact);
  *       200:
  *         description: List of all contact messages
  */
-router.get("/", protect, authorize("super-admin"), getAllContacts);
+router.get("/", protect, authorize("admin"), getAllContacts);
 
 export default router;

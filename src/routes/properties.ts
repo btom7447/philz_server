@@ -167,7 +167,7 @@ router.get("/:id", getPropertyById);
 router.post(
   "/",
   protect,
-  authorize("super-admin"),
+  authorize("admin"),
   upload.array("files"),
   createProperty
 );
@@ -207,7 +207,7 @@ router.post(
  *       404:
  *         description: Property not found
  */
-router.patch("/:id", protect, authorize("super-admin"), updateProperty);
+router.patch("/:id", protect, authorize("admin"), updateProperty);
 
 /**
  * @swagger
@@ -230,6 +230,6 @@ router.patch("/:id", protect, authorize("super-admin"), updateProperty);
  *       404:
  *         description: Property not found
  */
-router.delete("/:id", protect, authorize("super-admin"), deleteProperty);
+router.delete("/:id", protect, authorize("admin"), deleteProperty);
 
 export default router;

@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-export const generateToken = (id: string, role: "super-admin" | "client") => {
+export const generateToken = (id: string, role: "admin" | "user") => {
   const secret = process.env.JWT_SECRET;
   if (!secret)
     throw new Error("JWT_SECRET is not defined in environment variables");

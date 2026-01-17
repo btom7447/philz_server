@@ -3,6 +3,15 @@ import crypto from "crypto";
 import User, { IUser } from "../models/User";
 import { generateToken } from "../utils/generateToken";
 
+// Helper function to format user response
+const formatUserResponse = (user: IUser) => ({
+  id: user._id.toString(),
+  name: user.name,
+  email: user.email,
+  phone: user.phone,
+  role: user.role,
+});
+
 // ----------------------
 // REGISTER
 // ----------------------
@@ -10,13 +19,18 @@ export const register = async (req: Request, res: Response) => {
   try {
     const { name, email, phone, password } = req.body;
 
+    // Input validation
+    if (!name || !email || !phone || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser)
       return res.status(400).json({ message: "User already exists" });
 
     const role: IUser["role"] = email.endsWith("@philzproperties.com")
-      ? "super-admin"
-      : "client";
+      ? "admin"
+      : "user";
 
     const user = await User.create({ name, email, phone, password, role });
 
@@ -24,13 +38,7 @@ export const register = async (req: Request, res: Response) => {
 
     res.status(201).json({
       token,
-      user: {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-      },
+      user: formatUserResponse(user),
     });
   } catch (err) {
     console.error("Register error:", err);
@@ -45,6 +53,11 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
+    // Input validation
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
     const user = await User.findOne({ email }).select("+password");
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ message: "Invalid credentials" });
@@ -54,12 +67,7 @@ export const login = async (req: Request, res: Response) => {
 
     res.json({
       token,
-      user: {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+      user: formatUserResponse(user),
     });
   } catch (err) {
     console.error("Login error:", err);

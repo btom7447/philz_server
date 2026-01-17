@@ -85,7 +85,7 @@ router.get("/public", getPublicTestimonials);
 router.post(
   "/",
   protect,
-  authorize("client"),
+  authorize("user"),
   upload.array("files", 1),
   createTestimonial
 );
@@ -109,7 +109,7 @@ router.post(
  *       403:
  *         description: Forbidden
  */
-router.get("/", protect, authorize("super-admin"), getAllTestimonials);
+router.get("/", protect, authorize("admin"), getAllTestimonials);
 
 // ============================
 // GET ONE
@@ -135,7 +135,7 @@ router.get("/", protect, authorize("super-admin"), getAllTestimonials);
  *       404:
  *         description: Not found
  */
-router.get("/:id", protect, authorize("super-admin"), getTestimonialById);
+router.get("/:id", protect, authorize("admin"), getTestimonialById);
 
 // ============================
 // UPDATE
@@ -184,7 +184,7 @@ router.get("/:id", protect, authorize("super-admin"), getTestimonialById);
 router.put(
   "/:id",
   protect,
-  authorize("super-admin"),
+  authorize("admin"),
   upload.array("files", 1),
   updateTestimonial
 );
@@ -225,7 +225,7 @@ router.put(
 router.patch(
   "/:id/approve",
   protect,
-  authorize("super-admin"),
+  authorize("admin"),
   approveTestimonial
 );
 
@@ -253,6 +253,6 @@ router.patch(
  *       404:
  *         description: Not found
  */
-router.delete("/:id", protect, authorize("super-admin"), deleteTestimonial);
+router.delete("/:id", protect, authorize("admin"), deleteTestimonial);
 
 export default router;

@@ -17,8 +17,8 @@ const register = async (req, res) => {
         if (existingUser)
             return res.status(400).json({ message: "User already exists" });
         const role = email.endsWith("@philzproperties.com")
-            ? "super-admin"
-            : "client";
+            ? "admin"
+            : "user";
         const user = await User_1.default.create({ name, email, password, role });
         const token = (0, generateToken_1.generateToken)(user._id.toString(), user.role);
         res.status(201).json({

@@ -218,7 +218,7 @@ router.patch("/:id/cancel", protect, cancelTour);
  *       500:
  *         description: Server error
  */
-router.get("/admin/all", protect, authorize("super-admin"), getAllTours);
+router.get("/admin/all", protect, authorize("admin"), getAllTours);
 
 /**
  * @swagger
@@ -256,6 +256,6 @@ router.get("/admin/all", protect, authorize("super-admin"), getAllTours);
  *       500:
  *         description: Server error
  */
-router.patch("/:id/approve", protect, authorize("super-admin"), approveTour);
+router.patch("/:id/approve", protect, authorize("admin"), approveTour);
 
 export default router;

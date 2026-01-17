@@ -67,7 +67,7 @@ const router = Router();
  *                       type: string
  *                     role:
  *                       type: string
- *                       enum: [super-admin, client]
+ *                       enum: [admin, user]
  *       400:
  *         description: User already exists or validation error
  */
@@ -112,7 +112,7 @@ const router = Router();
  *                       type: string
  *                     role:
  *                       type: string
- *                       enum: [super-admin, client]
+ *                       enum: [admin, user]
  *       401:
  *         description: Invalid credentials
  */
