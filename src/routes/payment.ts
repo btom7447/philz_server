@@ -12,7 +12,7 @@ import { protect, authorize } from "../middleware/auth";
 const router = Router();
 
 // Initialize payment (redirect to Paystack)
-router.post("/", protect, authorize("client"), initPayment);
+router.post("/", protect, authorize("user"), initPayment);
 
 // Paystack webhook
 router.post("/webhook", handleWebhook);

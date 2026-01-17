@@ -17,7 +17,7 @@ const router = Router();
  * @swagger
  * tags:
  *   name: Testimonials
- *   description: Client testimonials management
+ *   description: User testimonials management
  */
 
 // ============================
@@ -38,13 +38,13 @@ const router = Router();
 router.get("/public", getPublicTestimonials);
 
 // ============================
-// CREATE (CLIENT)
+// CREATE (USER)
 // ============================
 /**
  * @swagger
  * /api/testimonials:
  *   post:
- *     summary: Create a testimonial (client)
+ *     summary: Create a testimonial (user)
  *     tags: [Testimonials]
  *     security:
  *       - bearerAuth: []

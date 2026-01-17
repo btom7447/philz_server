@@ -4,7 +4,7 @@ import Testimonial from "../models/Testimonial";
 import { uploadFilesToCloudinary } from "../utils/uploadHelper";
 
 // ============================
-// CREATE TESTIMONIAL (CLIENT)
+// CREATE TESTIMONIAL (USER)
 // ============================
 export const createTestimonial = async (req: Request, res: Response) => {
   try {
