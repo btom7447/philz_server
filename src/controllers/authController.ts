@@ -10,6 +10,7 @@ const formatUserResponse = (user: IUser) => ({
   email: user.email,
   phone: user.phone,
   role: user.role,
+  avatarUrl: user.avatarUrl || "",
 });
 
 // ----------------------
@@ -140,6 +141,34 @@ export const resetPassword = async (req: Request, res: Response) => {
     res.json({ message: "Password reset successful", token: jwtToken });
   } catch (err) {
     console.error("Reset password error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ----------------------
+// UPDATE PROFILE AVATAR
+// ----------------------
+export const updateAvatar = async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.userId; // or get from auth middleware: req.user.id
+    const { avatarUrl } = req.body;
+
+    if (!avatarUrl) {
+      return res.status(400).json({ message: "Avatar URL is required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.avatarUrl = avatarUrl;
+    await user.save();
+
+    res.json({
+      message: "Profile avatar updated successfully",
+      avatarUrl: user.avatarUrl,
+    });
+  } catch (err) {
+    console.error("Update avatar error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
