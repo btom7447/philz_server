@@ -5,6 +5,7 @@ import {
   logout,
   forgotPassword,
   resetPassword,
+  getCurrentUser
 } from "../controllers/authController";
 import { publicLimiter } from "../middleware/rateLimiter";
 import { validateRequest } from "../middleware/validateRequest";
@@ -14,6 +15,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
 } from "../utils/validatorSchemas";
+import { protect } from "../middleware/auth";
 
 const router = Router();
 
@@ -200,6 +202,7 @@ router.post(
   register
 );
 router.post("/login", publicLimiter, validateRequest(loginSchema), login);
+router.get("/me", protect, getCurrentUser);
 router.post(
   "/forgot-password",
   publicLimiter,

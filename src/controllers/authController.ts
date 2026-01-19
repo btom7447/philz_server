@@ -77,6 +77,30 @@ export const login = async (req: Request, res: Response) => {
 };
 
 // ----------------------
+// GET CURRENT USER
+// ----------------------
+export const getCurrentUser = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Not authorized" });
+
+    res.json({
+      user: {
+        id: req.user._id.toString(),
+        name: req.user.name,
+        email: req.user.email,
+        phone: req.user.phone,
+        role: req.user.role,
+        avatarUrl: req.user.avatarUrl || "",
+      },
+    });
+  } catch (err) {
+    console.error("Get current user error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+// ----------------------
 // LOGOUT
 // ----------------------
 export const logout = (req: Request, res: Response) => {
