@@ -58,7 +58,7 @@ export const createProperty = async (req: Request, res: Response) => {
       const { uploaded } = await uploadFilesToCloudinary(
         req.files as Express.Multer.File[],
         "properties",
-        "media"
+        "media",
       );
       images = uploaded.filter((f) => f.type === "image").map((f) => f.url);
       videos = uploaded.filter((f) => f.type === "video").map((f) => f.url);
@@ -89,9 +89,13 @@ export const createProperty = async (req: Request, res: Response) => {
     });
 
     res.status(201).json({ message: "Property created", property });
-  } catch (err: any) {
-    console.error("Create property error:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
+  } catch (error: any) {
+    console.error("CREATE PROPERTY ERROR:", error);
+
+    return res.status(400).json({
+      message: error.message,
+      error: error.errors ?? error,
+    });
   }
 };
 
