@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import crypto from "crypto";
 import User, { IUser } from "../models/User";
 import { generateToken } from "../utils/generateToken";
+import jwt from "jsonwebtoken";
 
 // Helper function to format user response
 const formatUserResponse = (user: IUser) => ({
@@ -99,6 +100,43 @@ export const getCurrentUser = async (req: Request, res: Response) => {
   }
 };
 
+// ----------------------
+// SESSION
+// ----------------------
+export const getSession = async (req: Request, res: Response) => {
+  try {
+    // Read token from Authorization header
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ authenticated: false });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string; role: "admin" | "user" };
+
+    // Fetch user
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user) {
+      return res.status(401).json({ authenticated: false });
+    }
+
+    // Respond with user shape matching AuthStore.User
+    return res.status(200).json({
+      authenticated: true,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        avatarUrl: user.avatarUrl || "",
+      },
+    });
+  } catch (err) {
+    console.error("Session check error:", err);
+    return res.status(401).json({ authenticated: false });
+  }
+};
 
 // ----------------------
 // LOGOUT

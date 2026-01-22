@@ -21,6 +21,8 @@ import errorHandler from "./middleware/errorHandler";
 
 // Swagger
 import swaggerUi from "swagger-ui-express";
+import { getSession } from "./controllers/authController";
+import router from "./routes/auth";
 const swaggerJsdoc = require("swagger-jsdoc");
 
 // ---------------- Database ----------------
@@ -93,6 +95,8 @@ app.use("/api/contact", contactRoutes);
 app.use("/api/testimonials", testimonialRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/upload", uploadRoutes);
+
+router.get("/session", getSession)
 
 // ---------------- Error Handling ----------------
 app.use(errorHandler);
