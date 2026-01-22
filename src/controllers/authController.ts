@@ -105,14 +105,17 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 // ----------------------
 export const getSession = async (req: Request, res: Response) => {
   try {
-    // Read token from Authorization header
-    const token = req.headers.authorization?.split(" ")[1];
+    // Read token from cookie
+    const token = req.cookies.token;
     if (!token) {
       return res.status(401).json({ authenticated: false });
     }
 
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string; role: "admin" | "user" };
+    // Verify JWT
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+      id: string;
+      role: string;
+    };
 
     // Fetch user
     const user = await User.findById(decoded.id).select("-password");
@@ -120,17 +123,10 @@ export const getSession = async (req: Request, res: Response) => {
       return res.status(401).json({ authenticated: false });
     }
 
-    // Respond with user shape matching AuthStore.User
+    // Respond with shape matching AuthStore.User
     return res.status(200).json({
       authenticated: true,
-      user: {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        avatarUrl: user.avatarUrl || "",
-      },
+      user: formatUserResponse(user),
     });
   } catch (err) {
     console.error("Session check error:", err);
