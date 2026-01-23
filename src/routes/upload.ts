@@ -35,29 +35,29 @@ const router = Router();
  *       500:
  *         description: Upload failed
  */
-router.post("/", upload.array("files"), async (req, res) => {
+
+// Handle multiple fields at once
+router.post("/", upload.fields([
+  { name: "images", maxCount: 10 },
+  { name: "videos", maxCount: 5 },
+  { name: "floorPlans", maxCount: 5 }
+]), async (req, res) => {
   try {
-    if (!req.files || (req.files as Express.Multer.File[]).length === 0) {
-      return res.status(400).json({ message: "No files uploaded" });
-    }
+    const files = req.files as Record<string, Express.Multer.File[]>;
 
-    const files = req.files as Express.Multer.File[];
-    const { folder, subfolder } = req.body;
+    const allFiles = [
+      ...(files.images || []),
+      ...(files.videos || []),
+      ...(files.floorPlans || []),
+    ];
 
-    if (!folder) {
-      return res.status(400).json({ message: "Folder is required" });
-    }
-
-    const { uploaded, failed } = await uploadFilesToCloudinary(
-      files,
-      folder,
-      subfolder
-    );
+    const folder = req.body.folder || "properties";
+    const { uploaded, failed } = await uploadFilesToCloudinary(allFiles, folder);
 
     res.status(200).json({
       message: "Files processed",
       uploaded,
-      failed: failed.length > 0 ? failed : undefined,
+      failed: failed.length ? failed : undefined,
     });
   } catch (err: any) {
     console.error("Upload error:", err);

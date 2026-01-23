@@ -6,7 +6,8 @@ type UploadFileResult = {
   url: string;
   public_id: string;
   type: "image" | "video";
-  originalName: string;
+  originalname: string; // <- matches Multer
+  fieldName: string; // <- new, keeps track of the original FormData field
 };
 
 const allowedMimeTypes = [
@@ -55,7 +56,8 @@ export const uploadFilesToCloudinary = async (
               url: result!.secure_url,
               public_id: result!.public_id,
               type,
-              originalName: file.originalname,
+              originalname: file.originalname,
+              fieldName: file.fieldname, // <- important for controller separation
             });
           }
         }
