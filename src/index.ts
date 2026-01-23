@@ -4,6 +4,7 @@ dotenv.config();
 import express, { Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import connectDB from "./config/db";
 
 // Routes
@@ -32,6 +33,7 @@ const app = express();
 // ---------------- Security & Parsing ----------------
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: "10kb" }));
+app.use(cookieParser());
 
 // ---------------- Environment ----------------
 const isProd = process.env.NODE_ENV === "production";

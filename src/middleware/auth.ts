@@ -10,16 +10,31 @@ interface JwtPayload {
 export const protect = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
-  let token = req.headers.authorization?.split(" ")[1];
+  let token: string | undefined;
 
-  if (!token) return res.status(401).json({ message: "Not authorized" });
+  // 1️⃣ Check Authorization header
+  if (req.headers.authorization?.startsWith("Bearer")) {
+    token = req.headers.authorization.split(" ")[1];
+  }
+
+  // 2️⃣ Fallback to httpOnly cookie
+  if (!token && req.cookies?.token) {
+    token = req.cookies.token;
+  }
+
+  if (!token) {
+    return res.status(401).json({ message: "Not authorized" });
+  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
+
     const user = await User.findById(decoded.id).select("-password");
-    if (!user) return res.status(401).json({ message: "Not authorized" });
+    if (!user) {
+      return res.status(401).json({ message: "Not authorized" });
+    }
 
     req.user = user;
     next();
