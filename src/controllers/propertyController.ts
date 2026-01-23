@@ -28,20 +28,21 @@ export const createProperty = async (req: Request, res: Response) => {
       additionalDetails,
     } = req.body;
 
+    // ✅ stricter numeric checks and required arrays
     if (
       !title ||
       !description ||
       !propertyType ||
       !address?.city ||
       !address?.state ||
-      !location?.latitude ||
-      !location?.longitude ||
+      location?.latitude === undefined ||
+      location?.longitude === undefined ||
       bedrooms === undefined ||
       bathrooms === undefined ||
       toilets === undefined ||
       area === undefined ||
       garages === undefined ||
-      !price ||
+      price === undefined ||
       !status ||
       yearBuilt === undefined ||
       !amenities?.length
@@ -54,6 +55,7 @@ export const createProperty = async (req: Request, res: Response) => {
     let videos: string[] = [];
     let floorPlans: string[] = [];
 
+    // ✅ upload files if present
     if (req.files && (req.files as Express.Multer.File[]).length > 0) {
       const { uploaded } = await uploadFilesToCloudinary(
         req.files as Express.Multer.File[],
@@ -64,22 +66,29 @@ export const createProperty = async (req: Request, res: Response) => {
       videos = uploaded.filter((f) => f.type === "video").map((f) => f.url);
     }
 
+    // ✅ transform location to GeoJSON format
+    const geoLocation = {
+      type: "Point",
+      coordinates: [Number(location.longitude), Number(location.latitude)],
+    };
+
+    // ✅ create property
     const property = await Property.create({
       title,
       description,
       propertyType,
       address,
-      location,
-      bedrooms,
-      bathrooms,
-      toilets,
-      area,
-      garages,
-      price,
+      location: geoLocation,
+      bedrooms: Number(bedrooms),
+      bathrooms: Number(bathrooms),
+      toilets: Number(toilets),
+      area: Number(area),
+      garages: Number(garages),
+      price: Number(price),
       status,
       featured: Boolean(featured),
       sold: Boolean(sold),
-      yearBuilt,
+      yearBuilt: Number(yearBuilt),
       amenities,
       images,
       videos,
