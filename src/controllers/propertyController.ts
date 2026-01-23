@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
 import Property from "../models/Property";
-import { uploadFilesToCloudinary } from "../utils/uploadHelper";
-import mongoose from "mongoose";
+import { deleteFilesFromCloudinary } from "../utils/cloudinaryServer";
 
+// ============================
 // CREATE PROPERTY
+// ============================
 export const createProperty = async (req: Request, res: Response) => {
   try {
     const {
@@ -24,8 +25,12 @@ export const createProperty = async (req: Request, res: Response) => {
       yearBuilt,
       amenities,
       additionalDetails,
+      images = [],
+      videos = [],
+      floorPlans = [],
     } = req.body;
 
+    // Basic validation
     if (
       !title ||
       !description ||
@@ -47,40 +52,6 @@ export const createProperty = async (req: Request, res: Response) => {
       return res
         .status(400)
         .json({ message: "All required fields must be provided" });
-    }
-
-    let images: string[] = [];
-    let videos: string[] = [];
-    let floorPlans: string[] = [];
-
-    // ----------------------------
-    // Upload files from multer fields
-    // ----------------------------
-    if (req.files) {
-      const filesByField = req.files as Record<string, Express.Multer.File[]>;
-      const allFiles = [
-        ...(filesByField.images || []),
-        ...(filesByField.videos || []),
-        ...(filesByField.floorPlans || []),
-      ];
-
-      const { uploaded } = await uploadFilesToCloudinary(
-        allFiles,
-        "properties",
-      );
-
-      // inside createProperty
-      images = uploaded
-        .filter((f) => f.fieldName === "images")
-        .map((f) => f.url);
-
-      videos = uploaded
-        .filter((f) => f.fieldName === "videos")
-        .map((f) => f.url);
-
-      floorPlans = uploaded
-        .filter((f) => f.fieldName === "floorPlans")
-        .map((f) => f.url);
     }
 
     const geoLocation = {
@@ -115,15 +86,12 @@ export const createProperty = async (req: Request, res: Response) => {
     res.status(201).json({ message: "Property created", property });
   } catch (err: any) {
     console.error("CREATE PROPERTY ERROR:", err);
-    return res
-      .status(400)
-      .json({ message: err.message, error: err.errors ?? err });
+    res.status(400).json({ message: err.message, error: err.errors ?? err });
   }
 };
 
-
 // ============================
-// UPDATE PROPERTY (featured, sold, status)
+// UPDATE PROPERTY (featured, sold, status, other fields)
 // ============================
 export const updateProperty = async (req: Request, res: Response) => {
   try {
@@ -131,7 +99,17 @@ export const updateProperty = async (req: Request, res: Response) => {
     if (!property)
       return res.status(404).json({ message: "Property not found" });
 
-    const { featured, sold, status, price, propertyType, address } = req.body;
+    const {
+      featured,
+      sold,
+      status,
+      price,
+      propertyType,
+      address,
+      images,
+      videos,
+      floorPlans,
+    } = req.body;
 
     if (featured !== undefined) property.featured = Boolean(featured);
     if (sold !== undefined) property.sold = Boolean(sold);
@@ -139,6 +117,9 @@ export const updateProperty = async (req: Request, res: Response) => {
     if (price) property.price = price;
     if (propertyType) property.propertyType = propertyType;
     if (address) property.address = address;
+    if (images) property.images = images;
+    if (videos) property.videos = videos;
+    if (floorPlans) property.floorPlans = floorPlans;
 
     await property.save();
     res.json({ message: "Property updated", property });
@@ -153,11 +134,28 @@ export const updateProperty = async (req: Request, res: Response) => {
 // ============================
 export const deleteProperty = async (req: Request, res: Response) => {
   try {
-    const property = await Property.findByIdAndDelete(req.params.id);
+    const property = await Property.findById(req.params.id);
+
     if (!property)
       return res.status(404).json({ message: "Property not found" });
 
-    res.json({ message: "Property deleted" });
+    // Collect all public_ids from images, videos, floorPlans
+    const publicIds: string[] = [
+      ...(property.images?.map((f: any) => f.public_id) || []),
+      ...(property.videos?.map((f: any) => f.public_id) || []),
+      ...(property.floorPlans?.map((f: any) => f.public_id) || []),
+    ];
+
+    // Delete from Cloudinary
+    const deletionResults = await deleteFilesFromCloudinary(publicIds);
+
+    // Delete property from DB
+    await property.deleteOne();
+
+    res.json({
+      message: "Property deleted",
+      cloudinary: deletionResults,
+    });
   } catch (err: any) {
     console.error("Delete property error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
@@ -186,7 +184,7 @@ export const getAllProperties = async (req: Request, res: Response) => {
   try {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 20;
-    const sortBy = req.query.sortBy || "createdAt"; // e.g., price, area, createdAt
+    const sortBy = req.query.sortBy || "createdAt";
     const order = req.query.order === "asc" ? 1 : -1;
 
     const properties = await Property.find()
@@ -219,7 +217,7 @@ export const searchProperties = async (req: Request, res: Response) => {
       searchText,
       lat,
       lng,
-      radius, // in meters
+      radius,
       page,
       limit,
       sortBy,
@@ -227,7 +225,6 @@ export const searchProperties = async (req: Request, res: Response) => {
     } = req.query;
 
     const filter: any = {};
-
     if (state) filter["address.state"] = state;
     if (status) filter.status = status;
     if (featured !== undefined) filter.featured = featured === "true";
@@ -243,11 +240,8 @@ export const searchProperties = async (req: Request, res: Response) => {
 
     let properties;
 
-    // If lat/lng provided, do geoNear query
     if (lat && lng && radius) {
-      // Force tuple type [lng, lat]
       const coordinates: [number, number] = [Number(lng), Number(lat)];
-
       properties = await Property.aggregate([
         {
           $geoNear: {
@@ -274,7 +268,6 @@ export const searchProperties = async (req: Request, res: Response) => {
     }
 
     const total = await Property.countDocuments({ ...filter });
-
     res.json({ total, page: pageNum, limit: pageLimit, properties });
   } catch (err: any) {
     console.error("Search properties error:", err);
