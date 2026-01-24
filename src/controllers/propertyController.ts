@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import Property from "../models/Property";
-import { deleteFilesFromCloudinary } from "../utils/cloudinaryServer";
 import cloudinary from "../utils/cloudinary";
 
 // ============================

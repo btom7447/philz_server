@@ -1,17 +1,13 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import Testimonial from "../models/Testimonial";
-import { uploadFilesToCloudinary } from "../utils/uploadHelper";
+import cloudinary from "../utils/cloudinary";
 
 // ============================
-// CREATE TESTIMONIAL (USER)
+// CREATE TESTIMONIAL
 // ============================
 export const createTestimonial = async (req: Request, res: Response) => {
   try {
-    if (!req.body) {
-      return res.status(400).json({ message: "Request body is missing" });
-    }
-
     const { name, title, content, rating } = req.body;
 
     if (!name || !title || !content || !rating) {
@@ -25,24 +21,16 @@ export const createTestimonial = async (req: Request, res: Response) => {
         .json({ message: "Rating must be a number between 1 and 5" });
     }
 
-    let image: string | undefined;
+    let images: { url: string; public_id: string }[] = [];
 
     if (req.files && (req.files as Express.Multer.File[]).length > 0) {
-      const { uploaded, failed } = await uploadFilesToCloudinary(
-        req.files as Express.Multer.File[],
-        "testimonials",
-        "images"
-      );
-
-      if (failed.length > 0) {
-        return res.status(400).json({
-          message: "Some files failed validation",
-          failed,
+      for (const file of req.files as Express.Multer.File[]) {
+        const uploaded = await cloudinary.uploader.upload(file.path, {
+          folder: "testimonials/images",
+          resource_type: "image",
         });
-      }
 
-      if (uploaded.length > 0) {
-        image = uploaded[0].url; // Only one image allowed
+        images.push({ url: uploaded.secure_url, public_id: uploaded.public_id });
       }
     }
 
@@ -51,13 +39,51 @@ export const createTestimonial = async (req: Request, res: Response) => {
       title,
       content,
       rating: numericRating,
-      image,
+      images,
       approved: false,
     });
 
     res.status(201).json({ message: "Testimonial created", testimonial });
   } catch (err: any) {
     console.error("Create testimonial error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// ============================
+// UPDATE TESTIMONIAL
+// ============================
+export const updateTestimonial = async (req: Request, res: Response) => {
+  try {
+    const id = String(req.params.id);
+    if (!mongoose.isValidObjectId(id))
+      return res.status(400).json({ message: "Invalid testimonial ID" });
+
+    const testimonial = await Testimonial.findById(id);
+    if (!testimonial) return res.status(404).json({ message: "Not found" });
+
+    const { name, title, content, rating, approved } = req.body;
+
+    if (name) testimonial.name = name;
+    if (title) testimonial.title = title;
+    if (content) testimonial.content = content;
+    if (rating) testimonial.rating = Number(rating);
+    if (approved !== undefined) testimonial.approved = approved;
+
+    if (req.files && (req.files as Express.Multer.File[]).length > 0) {
+      for (const file of req.files as Express.Multer.File[]) {
+        const uploaded = await cloudinary.uploader.upload(file.path, {
+          folder: "testimonials/images",
+          resource_type: "image",
+        });
+        testimonial.images.push({ url: uploaded.secure_url, public_id: uploaded.public_id });
+      }
+    }
+
+    await testimonial.save();
+    res.json({ message: "Testimonial updated", testimonial });
+  } catch (err: any) {
+    console.error("Update testimonial error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
@@ -104,55 +130,6 @@ export const getTestimonialById = async (req: Request, res: Response) => {
 
     res.json(testimonial);
   } catch (err: any) {
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-};
-
-// ============================
-// UPDATE TESTIMONIAL (ADMIN)
-// ============================
-export const updateTestimonial = async (req: Request, res: Response) => {
-  try {
-    const id = String(req.params.id);
-
-    if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({ message: "Invalid testimonial ID" });
-    }
-
-    const testimonial = await Testimonial.findById(id);
-    if (!testimonial) return res.status(404).json({ message: "Not found" });
-
-    const { name, title, content, rating, approved } = req.body;
-
-    if (name) testimonial.name = name;
-    if (title) testimonial.title = title;
-    if (content) testimonial.content = content;
-    if (rating) testimonial.rating = rating;
-    if (approved !== undefined) testimonial.approved = approved;
-
-    if (req.files && (req.files as Express.Multer.File[]).length > 0) {
-      const { uploaded, failed } = await uploadFilesToCloudinary(
-        req.files as Express.Multer.File[],
-        "testimonials",
-        "images"
-      );
-
-      if (failed.length > 0) {
-        return res.status(400).json({
-          message: "Some files failed validation",
-          failed,
-        });
-      }
-
-      if (uploaded.length > 0) {
-        testimonial.image = uploaded[0].url;
-      }
-    }
-
-    await testimonial.save();
-    res.json({ message: "Testimonial updated", testimonial });
-  } catch (err: any) {
-    console.error("Update testimonial error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
