@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Property from "../models/Property";
 import { deleteFilesFromCloudinary } from "../utils/cloudinaryServer";
+import cloudinary from "../utils/cloudinary";
 
 // ============================
 // CREATE PROPERTY
@@ -133,33 +134,31 @@ export const updateProperty = async (req: Request, res: Response) => {
 // DELETE PROPERTY
 // ============================
 export const deleteProperty = async (req: Request, res: Response) => {
-  try {
-    const property = await Property.findById(req.params.id);
+  const property = await Property.findById(req.params.id);
 
-    if (!property)
-      return res.status(404).json({ message: "Property not found" });
-
-    // Collect all public_ids from images, videos, floorPlans
-    const publicIds: string[] = [
-      ...(property.images?.map((f: any) => f.public_id) || []),
-      ...(property.videos?.map((f: any) => f.public_id) || []),
-      ...(property.floorPlans?.map((f: any) => f.public_id) || []),
-    ];
-
-    // Delete from Cloudinary
-    const deletionResults = await deleteFilesFromCloudinary(publicIds);
-
-    // Delete property from DB
-    await property.deleteOne();
-
-    res.json({
-      message: "Property deleted",
-      cloudinary: deletionResults,
-    });
-  } catch (err: any) {
-    console.error("Delete property error:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
+  if (!property) {
+    return res.status(404).json({ message: "Property not found" });
   }
+
+  const allMedia = [
+    ...property.images,
+    ...property.videos,
+    ...property.floorPlans,
+  ];
+
+  // delete from cloudinary
+  await Promise.all(
+    allMedia.map((media) =>
+      cloudinary.uploader.destroy(media.public_id, {
+        resource_type: "auto",
+        invalidate: true,
+      }),
+    ),
+  );
+
+  await property.deleteOne();
+
+  res.json({ message: "Property deleted successfully" });
 };
 
 // ============================

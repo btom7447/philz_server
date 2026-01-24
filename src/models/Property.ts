@@ -17,9 +17,20 @@ export interface IProperty extends Document {
   sold: boolean;
   yearBuilt: number;
   amenities: string[];
-  images: string[];
-  videos: string[];
-  floorPlans: string[];
+  images: {
+    url: string;
+    public_id: string;
+  }[];
+
+  videos: {
+    url: string;
+    public_id: string;
+  }[];
+
+  floorPlans: {
+    url: string;
+    public_id: string;
+  }[];
   additionalDetails: Record<string, any>;
   createdBy: mongoose.Types.ObjectId;
 }
@@ -60,13 +71,28 @@ const propertySchema: Schema<IProperty> = new Schema(
     sold: { type: Boolean, default: false },
     yearBuilt: { type: Number, required: true },
     amenities: [{ type: String }],
-    images: [{ type: String }],
-    videos: [{ type: String }],
-    floorPlans: [{ type: String }],
+    images: [
+      {
+        url: { type: String, required: true },
+        public_id: { type: String, required: true },
+      },
+    ],
+    videos: [
+      {
+        url: { type: String, required: true },
+        public_id: { type: String, required: true },
+      },
+    ],
+    floorPlans: [
+      {
+        url: { type: String, required: true },
+        public_id: { type: String, required: true },
+      },
+    ],
     additionalDetails: { type: Schema.Types.Mixed },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Geo index for fast distance queries
