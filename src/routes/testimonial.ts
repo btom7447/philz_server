@@ -85,7 +85,7 @@ router.get("/public", getPublicTestimonials);
 router.post(
   "/",
   protect,
-  authorize("user"),
+  authorize("admin", "user"),
   upload.array("files", 1),
   createTestimonial
 );
