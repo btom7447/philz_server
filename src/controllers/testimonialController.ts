@@ -7,14 +7,13 @@ import Testimonial from "../models/Testimonial";
 // ============================
 export const createTestimonial = async (req: Request, res: Response) => {
   try {
-    const { _id, name, title, content, rating, approved, images } = req.body;
+    const { name, title, content, rating, approved, images } = req.body;
 
-    if (!_id || !name || !title || !content || !rating) {
+    if (!name || !title || !content || rating === undefined) {
       return res.status(400).json({ message: "All fields required" });
     }
 
     const testimonial = await Testimonial.create({
-      _id,
       name,
       title,
       content,
