@@ -46,14 +46,21 @@ const PORT = isProd
   : process.env.DEV_PORT || 5000;
 
 // ---------------- CORS ----------------
-const allowedOrigins = [FRONTEND_URL, `http://localhost:${PORT}`];
+const allowedOrigins = [FRONTEND_URL, `http://localhost:3000`]; // local dev always 3000
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin))
+    origin: function (origin, callback) {
+      if (!origin) {
+        // Allow requests like Postman, curl, mobile apps
         return callback(null, true);
-      callback(new Error("CORS not allowed"));
+      }
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        console.warn(`Blocked CORS request from origin: ${origin}`);
+        return callback(new Error("CORS not allowed"));
+      }
     },
     credentials: true,
   })
