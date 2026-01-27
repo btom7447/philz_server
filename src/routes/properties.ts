@@ -5,7 +5,6 @@ import {
   deleteProperty,
   getAllProperties,
   getPropertyById,
-  searchProperties,
 } from "../controllers/propertyController";
 import { protect, authorize } from "../middleware/auth";
 import { upload } from "../middleware/upload";
@@ -30,41 +29,6 @@ const router = Router();
  *         description: List of properties
  */
 router.get("/", getAllProperties);
-
-/**
- * @swagger
- * /api/properties/search:
- *   get:
- *     summary: Search properties by filters (state, status, featured, type)
- *     tags: [Properties]
- *     parameters:
- *       - in: query
- *         name: state
- *         schema:
- *           type: string
- *         description: State to filter by
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [for sale, for rent]
- *         description: Status of property
- *       - in: query
- *         name: featured
- *         schema:
- *           type: boolean
- *         description: Filter featured properties
- *       - in: query
- *         name: propertyType
- *         schema:
- *           type: string
- *           enum: [apartment, house, office, shop]
- *         description: Property type
- *     responses:
- *       200:
- *         description: Filtered list of properties
- */
-router.get("/search", searchProperties);
 
 /**
  * @swagger

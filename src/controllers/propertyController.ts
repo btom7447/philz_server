@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Property from "../models/Property";
 import cloudinary from "../utils/cloudinary";
+import { SortOrder } from "mongoose";
 
 // ============================
 // CREATE PROPERTY
@@ -30,7 +31,6 @@ export const createProperty = async (req: Request, res: Response) => {
       floorPlans = [],
     } = req.body;
 
-    // Basic validation
     if (
       !title ||
       !description ||
@@ -86,12 +86,12 @@ export const createProperty = async (req: Request, res: Response) => {
     res.status(201).json({ message: "Property created", property });
   } catch (err: any) {
     console.error("CREATE PROPERTY ERROR:", err);
-    res.status(400).json({ message: err.message, error: err.errors ?? err });
+    res.status(400).json({ message: err.message });
   }
 };
 
 // ============================
-// UPDATE PROPERTY (featured, sold, status, other fields)
+// UPDATE PROPERTY
 // ============================
 export const updateProperty = async (req: Request, res: Response) => {
   try {
@@ -99,65 +99,19 @@ export const updateProperty = async (req: Request, res: Response) => {
     if (!property)
       return res.status(404).json({ message: "Property not found" });
 
-    const {
-      featured,
-      sold,
-      status,
-      price,
-      propertyType,
-      address,
-      images,
-      videos,
-      floorPlans,
-    } = req.body;
+    const updates = req.body;
 
-    if (featured !== undefined) property.featured = Boolean(featured);
-    if (sold !== undefined) property.sold = Boolean(sold);
-    if (status) property.status = status;
-    if (price) property.price = price;
-    if (propertyType) property.propertyType = propertyType;
-    if (address) property.address = address;
-    if (images) property.images = images;
-    if (videos) property.videos = videos;
-    if (floorPlans) property.floorPlans = floorPlans;
+    Object.keys(updates).forEach((key) => {
+      // @ts-ignore
+      if (updates[key] !== undefined) property[key] = updates[key];
+    });
 
     await property.save();
     res.json({ message: "Property updated", property });
   } catch (err: any) {
     console.error("Update property error:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
+    res.status(500).json({ message: "Server error" });
   }
-};
-
-// ============================
-// DELETE PROPERTY
-// ============================
-export const deleteProperty = async (req: Request, res: Response) => {
-  const property = await Property.findById(req.params.id);
-
-  if (!property) {
-    return res.status(404).json({ message: "Property not found" });
-  }
-
-  const allMedia = [
-    ...property.images,
-    ...property.videos,
-    ...property.floorPlans,
-  ];
-
-  // delete from cloudinary
-  await Promise.all(
-    allMedia.map((media) =>
-      cloudinary.uploader.destroy(media.public_id, {
-        resource_type: "auto",
-        invalidate: true,
-      }),
-    ),
-  );
-
-  await property.deleteOne();
-
-  res.json({ message: "Property deleted successfully" });
 };
 
 // ============================
@@ -171,104 +125,152 @@ export const getPropertyById = async (req: Request, res: Response) => {
 
     res.json(property);
   } catch (err: any) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    res.status(500).json({ message: "Server error" });
   }
 };
 
 // ============================
-// GET ALL PROPERTIES (paginated, optional sorting)
+// GET ALL PROPERTIES (ONE ENDPOINT)
 // ============================
 export const getAllProperties = async (req: Request, res: Response) => {
   try {
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 20;
-    const sortBy = req.query.sortBy || "createdAt";
-    const order = req.query.order === "asc" ? 1 : -1;
+    const {
+      page = "1",
+      pageSize = "12",
+      sortBy = "createdAt:desc",
+      title,
+      location,
+      propertyType,
+      status,
+      maxPrice,
+      amenities,
+    } = req.query;
 
-    const properties = await Property.find()
-      .sort({ [sortBy as string]: order })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean();
+    // --------------------
+    // Pagination
+    // --------------------
+    const pageNum = Math.max(Number(page) || 1, 1);
+    const limit = Math.min(Number(pageSize) || 12, 50);
+    const skip = (pageNum - 1) * limit;
 
-    const total = await Property.countDocuments();
+    // --------------------
+    // Sorting (whitelisted + typed)
+    // --------------------
+    const [sortField, sortDir] = (sortBy as string).split(":");
 
-    res.json({ total, page, limit, properties });
-  } catch (err: any) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    const allowedSortFields = ["createdAt", "price", "title"];
+    const direction: SortOrder = sortDir === "asc" ? 1 : -1;
+
+    const sort: Record<string, SortOrder> = allowedSortFields.includes(
+      sortField,
+    )
+      ? { [sortField]: direction }
+      : { createdAt: -1 };
+
+    // --------------------
+    // Filters
+    // --------------------
+    const filter: Record<string, any> = {};
+
+    if (propertyType) filter.propertyType = propertyType;
+    if (status) filter.status = status;
+
+    if (maxPrice) {
+      const price = Number(maxPrice);
+      if (!Number.isNaN(price)) {
+        filter.price = { $lte: price };
+      }
+    }
+
+    if (amenities) {
+      const list = (amenities as string)
+        .split(",")
+        .map((a) => a.trim())
+        .filter(Boolean);
+
+      if (list.length) {
+        filter.amenities = { $all: list };
+      }
+    }
+
+    if (location) {
+      filter.$or = [
+        { "address.city": { $regex: location, $options: "i" } },
+        { "address.state": { $regex: location, $options: "i" } },
+      ];
+    }
+
+    // --------------------
+    // Text Search (requires text index)
+    // --------------------
+    if (title) {
+      filter.$text = { $search: title as string };
+    }
+
+    // --------------------
+    // Query
+    // --------------------
+    const [properties, total] = await Promise.all([
+      Property.find(filter).sort(sort).skip(skip).limit(limit).lean(),
+      Property.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      properties,
+      total,
+      page: pageNum,
+      pageSize: limit,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    console.error("GET ALL PROPERTIES ERROR:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
+
 // ============================
-// SEARCH PROPERTIES
+// DELETE PROPERTY
 // ============================
-export const searchProperties = async (req: Request, res: Response) => {
+export const deleteProperty = async (req: Request, res: Response) => {
   try {
-    const {
-      state,
-      status,
-      featured,
-      propertyType,
-      minPrice,
-      maxPrice,
-      sold,
-      searchText,
-      lat,
-      lng,
-      radius,
-      page,
-      limit,
-      sortBy,
-      order,
-    } = req.query;
+    const property = await Property.findById(req.params.id);
 
-    const filter: any = {};
-    if (state) filter["address.state"] = state;
-    if (status) filter.status = status;
-    if (featured !== undefined) filter.featured = featured === "true";
-    if (propertyType) filter.propertyType = propertyType;
-    if (sold !== undefined) filter.sold = sold === "true";
-    if (minPrice) filter.price = { ...filter.price, $gte: Number(minPrice) };
-    if (maxPrice) filter.price = { ...filter.price, $lte: Number(maxPrice) };
-
-    const pageNum = Number(page) || 1;
-    const pageLimit = Number(limit) || 20;
-    const sortField = (sortBy as string) || "createdAt";
-    const sortOrder = order === "asc" ? 1 : -1;
-
-    let properties;
-
-    if (lat && lng && radius) {
-      const coordinates: [number, number] = [Number(lng), Number(lat)];
-      properties = await Property.aggregate([
-        {
-          $geoNear: {
-            near: { type: "Point", coordinates },
-            distanceField: "distance",
-            maxDistance: Number(radius),
-            spherical: true,
-            query: filter,
-          },
-        },
-        { $sort: { [sortField]: sortOrder } },
-        { $skip: (pageNum - 1) * pageLimit },
-        { $limit: pageLimit },
-      ]);
-    } else {
-      const textFilter = searchText
-        ? { $text: { $search: searchText as string } }
-        : {};
-      properties = await Property.find({ ...filter, ...textFilter })
-        .sort({ [sortField]: sortOrder })
-        .skip((pageNum - 1) * pageLimit)
-        .limit(pageLimit)
-        .lean();
+    if (!property) {
+      return res.status(404).json({ message: "Property not found" });
     }
 
-    const total = await Property.countDocuments({ ...filter });
-    res.json({ total, page: pageNum, limit: pageLimit, properties });
+    const allMedia = [
+      ...property.images,
+      ...property.videos,
+      ...property.floorPlans,
+    ];
+
+    // Delete media from Cloudinary (best effort)
+    await Promise.all(
+      allMedia.map((media) =>
+        cloudinary.uploader
+          .destroy(media.public_id, {
+            resource_type: "auto",
+            invalidate: true,
+          })
+          .catch((err) => {
+            console.error(
+              `Cloudinary delete failed for ${media.public_id}:`,
+              err.message,
+            );
+          }),
+      ),
+    );
+
+    await property.deleteOne();
+
+    res.json({ message: "Property deleted successfully" });
   } catch (err: any) {
-    console.error("Search properties error:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
+    console.error("DELETE PROPERTY ERROR:", err);
+    res.status(500).json({
+      message: "Failed to delete property",
+      error: err.message,
+    });
   }
 };
