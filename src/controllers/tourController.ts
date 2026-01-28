@@ -33,13 +33,7 @@ export const requestTour = async (req: Request, res: Response) => {
 // ============================
 export const getUserTours = async (req: Request, res: Response) => {
   try {
-    const {
-      status,
-      type,
-      page = 1,
-      limit = 10,
-      sort = "-tourTime",
-    } = req.query;
+    const { status, type, page = 1, limit = 10, sort = "-tourTime" } = req.query;
 
     const filter: any = { userId: req.user!._id };
     if (status) filter.status = status;
@@ -51,13 +45,23 @@ export const getUserTours = async (req: Request, res: Response) => {
       .sort(sort as any)
       .skip(skip)
       .limit(Number(limit))
-      .lean()
-      .populate("propertyId", "title address propertyType");
+      .populate("propertyId", "title address propertyType price status images")
+      .populate("userId", "name email avatarUrl role")
+      .lean();
 
     const total = await TourRequest.countDocuments(filter);
 
+    // Rename for frontend DX
+    const formattedTours = tours.map((t) => ({
+      ...t,
+      user: t.userId,
+      property: t.propertyId,
+      userId: undefined,
+      propertyId: undefined,
+    }));
+
     res.json({
-      data: tours,
+      data: formattedTours,
       meta: { page: Number(page), limit: Number(limit), total },
     });
   } catch (err: any) {
@@ -71,14 +75,8 @@ export const getUserTours = async (req: Request, res: Response) => {
 // ============================
 export const getAllTours = async (req: Request, res: Response) => {
   try {
-    const {
-      status,
-      type,
-      propertyId,
-      page = 1,
-      limit = 20,
-      sort = "-tourTime",
-    } = req.query;
+    const { status, type, propertyId, page = 1, limit = 20, sort = "-tourTime" } =
+      req.query;
 
     const filter: any = {};
     if (status) filter.status = status;
@@ -91,14 +89,23 @@ export const getAllTours = async (req: Request, res: Response) => {
       .sort(sort as any)
       .skip(skip)
       .limit(Number(limit))
-      .lean()
-      .populate("propertyId", "title address propertyType")
-      .populate("userId", "name email");
+      .populate("propertyId", "title address propertyType price status images")
+      .populate("userId", "name email avatarUrl role")
+      .lean();
 
     const total = await TourRequest.countDocuments(filter);
 
+    // Rename for frontend DX
+    const formattedTours = tours.map((t) => ({
+      ...t,
+      user: t.userId,
+      property: t.propertyId,
+      userId: undefined,
+      propertyId: undefined,
+    }));
+
     res.json({
-      data: tours,
+      data: formattedTours,
       meta: { page: Number(page), limit: Number(limit), total },
     });
   } catch (err: any) {
