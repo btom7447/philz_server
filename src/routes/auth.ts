@@ -5,7 +5,8 @@ import {
   logout,
   forgotPassword,
   resetPassword,
-  getCurrentUser
+  getCurrentUser, 
+  updateProfile
 } from "../controllers/authController";
 import { publicLimiter } from "../middleware/rateLimiter";
 import { validateRequest } from "../middleware/validateRequest";
@@ -215,6 +216,7 @@ router.post(
   validateRequest(resetPasswordSchema),
   resetPassword
 );
+router.put("/update-profile", protect, updateProfile);
 router.post("/logout", logout);
 
 export default router;
