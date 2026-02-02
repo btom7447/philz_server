@@ -9,6 +9,7 @@ export interface ITourRequest extends Document {
   requestedAt: Date;
   approvedBy?: mongoose.Types.ObjectId;
   rescheduled?: boolean;
+  meetLink?: string;
 }
 
 const tourRequestSchema: Schema<ITourRequest> = new Schema(
@@ -36,8 +37,9 @@ const tourRequestSchema: Schema<ITourRequest> = new Schema(
     requestedAt: { type: Date, default: Date.now },
     approvedBy: { type: Schema.Types.ObjectId, ref: "User" },
     rescheduled: { type: Boolean, default: false },
+    meetLink: { type: String },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Compound index for common queries: user + status + tourTime

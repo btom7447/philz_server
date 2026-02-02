@@ -145,7 +145,7 @@ export const approveTour = async (req: Request, res: Response) => {
 // ============================
 export const rescheduleTour = async (req: Request, res: Response) => {
   try {
-    const { tourTime } = req.body;
+    const { tourTime, meetLink } = req.body;
     if (!tourTime)
       return res.status(400).json({ message: "tourTime is required" });
 
@@ -161,6 +161,7 @@ export const rescheduleTour = async (req: Request, res: Response) => {
     tour.tourTime = tourTime;
     tour.rescheduled = true;
     tour.status = "pending"; // reset status after reschedule
+    if (meetLink) tour.meetLink = meetLink;
     await tour.save();
 
     res.json({ message: "Tour rescheduled", tour });
