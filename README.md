@@ -1,176 +1,260 @@
-# Philz Properties Backend Documentation
+# Philz Properties API
 
-## Overview
-
-This backend is built with **Node.js, Express, TypeScript, and MongoDB (Mongoose)**. It provides all APIs for the **Philz Properties website**, including authentication, property management, tours, testimonials, inquiries, and contact messages.
-
-Key features:
-
-* JWT-based authentication with role-based access (`super-admin`, `client`).
-* File uploads for images, videos, floor plans (via Cloudinary).
-* Full-text search, filtering, and pagination support for properties.
-* Rate limiting for public endpoints (e.g., inquiries, contact forms).
-* Swagger/OpenAPI documentation support.
+Backend REST API for the Philz Properties real estate platform. Built with **Express.js**, **TypeScript**, **MongoDB (Mongoose)**, and secured with **JWT authentication**, **role-based access control**, and comprehensive input validation.
 
 ---
 
-## 1. **Authentication & Security**
+## Tech Stack
 
-### Middleware
-
-* `protect` – checks for valid JWT and adds `req.user`.
-* `authorize(...roles)` – restricts access based on user role.
-* `publicLimiter` – rate limits public routes to prevent abuse.
-* File upload middleware (`multer`) with validation.
-
-### User Roles
-
-| Role        | Access                                                         |
-| ----------- | -------------------------------------------------------------- |
-| super-admin | Full access to all endpoints (create, update, delete, approve) |
-| client      | Can submit testimonials, inquiries, tour requests              |
-
----
-
-## 2. **Routes & Endpoints**
-
-### 2.1 Properties
-
-**Model Fields**
-
-* `title`, `description`, `propertyType` (apartment, house, office, shop)
-* `address` (`city`, `state`)
-* `location` (`latitude`, `longitude`)
-* `bedrooms`, `bathrooms`, `toilets`, `area`, `garages`
-* `price`, `status` (for sale / for rent), `sold`, `featured`
-* `yearBuilt`, `amenities[]`, `images[]`, `videos[]`, `floorPlans[]`
-* `additionalDetails` (object)
-* `createdBy` (ref `User`)
-
-**Endpoints**
-
-| Method | URL                      | Description                                                                                | Access      |
-| ------ | ------------------------ | ------------------------------------------------------------------------------------------ | ----------- |
-| POST   | `/api/properties`        | Create property                                                                            | super-admin |
-| PATCH  | `/api/properties/:id`    | Update `featured`, `sold`, `status`                                                        | super-admin |
-| DELETE | `/api/properties/:id`    | Delete property                                                                            | super-admin |
-| GET    | `/api/properties/:id`    | Get property by ID                                                                         | Public      |
-| GET    | `/api/properties`        | Get all properties                                                                         | Public      |
-| GET    | `/api/properties/search` | Filter properties by `state`, `status`, `featured`, `propertyType`, distance (geo queries) | Public      |
-
-**Indexes**
-
-* `address.state`, `status`, `featured`, `price`, `propertyType`, `sold`
-* Compound index: `{ address.state, status, featured, price }`
-* Geospatial index on `location` for distance queries
-* Full-text index on `title`, `description`
-
-### 2.2 Testimonials
-
-**Model Fields**
-
-* `name`, `title`, `content`, `rating` (1-5)
-* `image`, `approved`, `isDeleted`
-
-**Endpoints**
-
-| Method | URL                             | Description               | Access      |
-| ------ | ------------------------------- | ------------------------- | ----------- |
-| POST   | `/api/testimonials`             | Submit testimonial        | client      |
-| GET    | `/api/testimonials/public`      | Get approved testimonials | Public      |
-| GET    | `/api/testimonials`             | List all testimonials     | super-admin |
-| GET    | `/api/testimonials/:id`         | Get testimonial by ID     | super-admin |
-| PUT    | `/api/testimonials/:id`         | Update testimonial        | super-admin |
-| PATCH  | `/api/testimonials/:id/approve` | Approve/unapprove         | super-admin |
-| DELETE | `/api/testimonials/:id`         | Delete testimonial        | super-admin |
-
-### 2.3 Tour Requests
-
-**Model Fields**
-
-* `propertyId` (ref `Property`), `userId` (ref `User`)
-* `type` (`virtual` | `in-person`), `status` (`pending`, `approved`, `rejected`)
-* `requestedAt`, `approvedBy` (ref `User`)
-* `scheduledTime` (optional), `cost` (determined by type)
-
-**Endpoints**
-
-| Method | URL                         | Description         | Access      |
-| ------ | --------------------------- | ------------------- | ----------- |
-| POST   | `/api/tours`                | Request a tour      | client      |
-| GET    | `/api/tours`                | Get user’s tours    | client      |
-| PATCH  | `/api/tours/:id/reschedule` | Reschedule a tour   | client      |
-| PATCH  | `/api/tours/:id/cancel`     | Cancel a tour       | client      |
-| GET    | `/api/tours/admin/all`      | List all tours      | super-admin |
-| PATCH  | `/api/tours/:id/approve`    | Approve/reject tour | super-admin |
-
-### 2.4 Inquiries
-
-**Model Fields**
-
-* `name`, `email`, `phone`, `message`
-* `propertyId` (optional)
-
-**Endpoints**
-
-| Method | URL              | Description       | Access      |
-| ------ | ---------------- | ----------------- | ----------- |
-| POST   | `/api/inquiries` | Submit inquiry    | Public      |
-| GET    | `/api/inquiries` | Get all inquiries | super-admin |
-
-### 2.5 Contact
-
-**Model Fields**
-
-* `name`, `email`, `phone` (optional), `message`
-
-**Endpoints**
-
-| Method | URL            | Description               | Access      |
-| ------ | -------------- | ------------------------- | ----------- |
-| POST   | `/api/contact` | Submit site contact form  | Public      |
-| GET    | `/api/contact` | List all contact messages | super-admin |
+| Layer          | Technology                          |
+| -------------- | ----------------------------------- |
+| Runtime        | Node.js + TypeScript                |
+| Framework      | Express.js 5                        |
+| Database       | MongoDB Atlas + Mongoose 9          |
+| Auth           | JWT (jsonwebtoken) + bcrypt         |
+| Email          | Resend                              |
+| Payments       | Paystack                            |
+| File Storage   | Cloudinary (via Multer)             |
+| Validation     | Zod                                 |
+| Security       | Helmet, CORS, express-rate-limit    |
+| Docs           | Swagger UI (swagger-jsdoc)          |
 
 ---
 
-## 3. **Best Practices / Improvements**
+## Getting Started
 
-1. **Indexes for Scalability**
+### Prerequisites
 
-   * Compound indexes on frequently queried fields.
-   * Geospatial index on `location` for distance queries.
+- Node.js 18+
+- pnpm 10+
+- MongoDB Atlas account (or local MongoDB)
+- Cloudinary account
+- Resend account (for transactional emails)
+- Paystack account (for payments)
 
-2. **Pagination & Lean Queries**
+### Installation
 
-   * Always paginate for list endpoints (`?page=1&limit=20`).
-   * Use `.lean()` for read-heavy endpoints.
+```bash
+cd server
+pnpm install
+```
 
-3. **Full-text search**
+### Environment Variables
 
-   * Text indexes for `title`, `description`.
+Copy the example file and fill in your values:
 
-4. **Caching**
+```bash
+cp .env.example .env
+```
 
-   * Consider Redis for caching frequently queried properties.
+| Variable               | Description                                |
+| ---------------------- | ------------------------------------------ |
+| `DEV_PORT`             | Development server port (default: 5000)    |
+| `PROD_PORT`            | Production server port (default: 8000)     |
+| `NODE_ENV`             | `development` or `production`              |
+| `MONGO_URI`            | MongoDB connection string                  |
+| `JWT_SECRET`           | 256-bit hex secret for JWT signing         |
+| `DEV_FRONTEND_URL`     | Frontend URL in dev (http://localhost:3000) |
+| `PROD_FRONTEND_URL`    | Frontend URL in production                 |
+| `CLOUDINARY_CLOUD_NAME`| Cloudinary cloud name                      |
+| `CLOUDINARY_API_KEY`   | Cloudinary API key                         |
+| `CLOUDINARY_API_SECRET`| Cloudinary API secret                      |
+| `RESEND_API_KEY`       | Resend API key for sending emails          |
+| `RESEND_FROM_EMAIL`    | Sender email address (verified in Resend)  |
+| `PAYSTACK_SECRET_KEY`  | Paystack secret key                        |
+| `SUPER_ADMIN_EMAIL`    | Email for seeded super admin               |
+| `SUPER_ADMIN_PASSWORD` | Password for seeded super admin            |
 
-5. **Validation**
+### Seed the Database
 
-   * Use `express-validator` or Zod for request body validation.
+```bash
+# Create the initial super admin (required before first use)
+pnpm run seed:admin
 
-6. **Notifications**
+# Seed sample properties (optional, for development)
+pnpm run seed:properties
+```
 
-   * Email or push notifications for tours, contact, inquiries.
+### Run Development Server
 
-7. **Security**
+```bash
+pnpm run dev
+```
 
-   * JWT expiration and refresh token strategy.
-   * Rate limiting for public endpoints.
-   * Input sanitization.
+Server starts at `http://localhost:5000`. Swagger docs at `http://localhost:5000/api/docs`.
+
+### Build for Production
+
+```bash
+pnpm run build
+pnpm start
+```
 
 ---
 
-## 4. **Swagger / OpenAPI**
+## Architecture
 
-* All routes have annotations for Swagger UI.
-* Public vs admin routes are clearly separated.
-* BearerAuth security applied where required.
+```
+server/src/
+  @types/            Express type declarations
+  config/
+    db.ts            MongoDB connection
+  controllers/       Request handlers (business logic)
+    authController.ts
+    propertyController.ts
+    tourController.ts
+    testimonialController.ts
+    inquiryController.ts
+    contactController.ts
+    paymentController.ts
+  middleware/
+    auth.ts          JWT verification + role authorization
+    rateLimiter.ts   Rate limiting (public, auth, password reset, webhook)
+    upload.ts        Multer config with MIME type whitelist
+    validateRequest.ts   Zod schema validation middleware
+    validateObjectId.ts  MongoDB ObjectID param validation
+    errorHandler.ts      Centralized error handler
+  models/
+    User.ts          Users with admin approval flow + soft deletes
+    Property.ts      Real estate listings with geo + text indexes
+    TourRequest.ts   Tour bookings with status lifecycle
+    Testimonial.ts   Client reviews with approval workflow
+    Contact.ts       Contact form submissions
+    Inquiry.ts       Property-specific inquiries
+    Payment.ts       Paystack payment records with idempotency
+    TokenBlacklist.ts   Revoked JWT tokens (TTL auto-cleanup)
+    AuditLog.ts      Who did what, when, from where
+  routes/            Express route definitions with Swagger annotations
+  seeds/
+    seedSuperAdmin.ts    Create initial admin account
+    seedProperties.ts    Populate sample property data
+  utils/
+    cloudinary.ts    Cloudinary SDK configuration
+    email.ts         Resend email service + HTML templates
+    generateToken.ts JWT token generation with variable expiry
+    validatorSchemas.ts  Zod schemas for all endpoints
+```
+
+---
+
+## API Endpoints
+
+### Authentication (`/api/auth`)
+
+| Method   | Endpoint               | Description                        | Access  |
+| -------- | ---------------------- | ---------------------------------- | ------- |
+| `POST`   | `/register`            | Register new user                  | Public  |
+| `POST`   | `/login`               | Login (supports remember me)       | Public  |
+| `GET`    | `/me`                  | Get current user                   | Auth    |
+| `GET`    | `/session`             | Check session from cookie          | Public  |
+| `POST`   | `/forgot-password`     | Send password reset email          | Public  |
+| `POST`   | `/reset-password`      | Reset password with token          | Public  |
+| `POST`   | `/verify-email`        | Verify email with token            | Public  |
+| `POST`   | `/refresh`             | Refresh JWT token                  | Auth    |
+| `PUT`    | `/update-profile`      | Update name, phone, avatar         | Auth    |
+| `POST`   | `/logout`              | Logout and revoke token            | Public  |
+| `DELETE` | `/delete-account`      | Soft-delete account + related data | Auth    |
+| `GET`    | `/admin/pending`       | List pending admin requests        | Admin   |
+| `POST`   | `/admin/approve`       | Approve or deny admin access       | Admin   |
+
+### Properties (`/api/properties`)
+
+| Method   | Endpoint   | Description                        | Access  |
+| -------- | ---------- | ---------------------------------- | ------- |
+| `GET`    | `/`        | List properties (paginated, filtered, sorted) | Public |
+| `GET`    | `/:id`     | Get property by ID                 | Public  |
+| `POST`   | `/`        | Create property                    | Admin   |
+| `PATCH`  | `/:id`     | Update property (whitelisted fields only) | Admin |
+| `DELETE` | `/:id`     | Delete property + Cloudinary media | Admin   |
+
+**Query params:** `page`, `pageSize`, `sortBy` (createdAt/price/title:asc/desc), `title` (text search), `location`, `propertyType`, `status`, `maxPrice`, `amenities`
+
+### Tours (`/api/tours`)
+
+| Method   | Endpoint             | Description              | Access  |
+| -------- | -------------------- | ------------------------ | ------- |
+| `POST`   | `/`                  | Request a tour           | Auth    |
+| `GET`    | `/`                  | Get user's tours         | Auth    |
+| `PATCH`  | `/:id/reschedule`    | Reschedule a tour        | Auth    |
+| `PATCH`  | `/:id/cancel`        | Cancel a tour            | Auth    |
+| `GET`    | `/admin/all`         | List all tours           | Admin   |
+| `PATCH`  | `/:id/approve`       | Approve/reject tour      | Admin   |
+
+### Testimonials (`/api/testimonials`)
+
+| Method   | Endpoint             | Description              | Access  |
+| -------- | -------------------- | ------------------------ | ------- |
+| `GET`    | `/public`            | Get approved testimonials | Public |
+| `POST`   | `/`                  | Submit testimonial       | Auth    |
+| `GET`    | `/`                  | List all testimonials    | Admin   |
+| `GET`    | `/:id`               | Get testimonial by ID    | Admin   |
+| `PUT`    | `/:id`               | Update testimonial       | Admin   |
+| `PATCH`  | `/:id/approve`       | Approve/unapprove        | Admin   |
+| `DELETE` | `/:id`               | Delete testimonial       | Admin   |
+
+### Inquiries (`/api/inquiries`)
+
+| Method | Endpoint              | Description                 | Access  |
+| ------ | --------------------- | --------------------------- | ------- |
+| `POST` | `/`                   | Submit inquiry (validated)  | Public  |
+| `GET`  | `/`                   | List inquiries (paginated)  | Admin   |
+| `GET`  | `/property/:propertyId` | Inquiries for a property  | Public  |
+
+### Contact (`/api/contact`)
+
+| Method | Endpoint | Description                    | Access  |
+| ------ | -------- | ------------------------------ | ------- |
+| `POST` | `/`      | Submit contact form (validated) | Public |
+| `GET`  | `/`      | List messages (paginated)       | Admin  |
+
+### Payments (`/api/payments`)
+
+| Method | Endpoint    | Description                              | Access   |
+| ------ | ----------- | ---------------------------------------- | -------- |
+| `POST` | `/`         | Initialize Paystack payment              | Auth     |
+| `POST` | `/webhook`  | Paystack webhook (signature-verified)    | Paystack |
+
+### Uploads (`/api/upload`)
+
+| Method | Endpoint | Description                              | Access |
+| ------ | -------- | ---------------------------------------- | ------ |
+| `POST` | `/`      | Upload images/videos/floor plans to Cloudinary | Auth |
+
+---
+
+## Security
+
+- **JWT Authentication** with httpOnly cookies and Bearer token support
+- **Token Revocation** via blacklist with TTL auto-cleanup
+- **Role-Based Access**: `user` and `admin` roles with admin approval workflow
+- **Admin Approval**: `@philzproperties.com` emails get admin role but require approval from an existing admin
+- **Rate Limiting**: Separate limiters for public endpoints (100/15min), auth (10/15min), password reset (5/hr), webhooks (100/min)
+- **Input Validation**: Zod schemas on all public-facing endpoints
+- **ObjectID Validation**: Middleware validates MongoDB IDs on all parameterized routes
+- **File Upload Security**: MIME type whitelist (images + video only), 50MB max
+- **Password Security**: bcrypt with 12 salt rounds, strong password requirements enforced on register and reset
+- **CSP Headers**: Content Security Policy via Helmet
+- **CORS**: Whitelist-based, null origin blocked in production
+- **Audit Logging**: All create/update/delete/login actions logged with user, resource, IP
+
+---
+
+## Email Notifications (Resend)
+
+| Event                  | Recipients         | Template                     |
+| ---------------------- | ------------------ | ---------------------------- |
+| Email verification     | New user           | Verify link (24hr expiry)    |
+| Password reset         | Requesting user    | Reset link (1hr expiry)      |
+| Admin request          | All existing admins| Name + email of requester    |
+| Admin approved         | Approved user      | Confirmation                 |
+| Admin denied           | Denied user        | Notification + role downgrade|
+
+---
+
+## Deployment
+
+- **Platform**: Render.com (or any Node.js host)
+- **Database**: MongoDB Atlas
+- **File Storage**: Cloudinary CDN
+- **Build**: `pnpm run build` compiles TypeScript to `dist/`
+- **Start**: `pnpm start` runs `node dist/index.js`

@@ -4,7 +4,9 @@ export interface IContact extends Document {
   name: string;
   email: string;
   phone?: string;
+  subject?: string;
   message: string;
+  isDeleted: boolean;
 }
 
 const contactSchema: Schema<IContact> = new Schema(
@@ -12,9 +14,11 @@ const contactSchema: Schema<IContact> = new Schema(
     name: { type: String, required: true },
     email: { type: String, required: true },
     phone: { type: String },
+    subject: { type: String },
     message: { type: String, required: true },
+    isDeleted: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const Contact: Model<IContact> = mongoose.model<IContact>(

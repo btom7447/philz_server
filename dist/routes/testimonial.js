@@ -9,7 +9,7 @@ const router = (0, express_1.Router)();
  * @swagger
  * tags:
  *   name: Testimonials
- *   description: Client testimonials management
+ *   description: User testimonials management
  */
 // ============================
 // PUBLIC (WEBSITE)
@@ -28,13 +28,13 @@ const router = (0, express_1.Router)();
  */
 router.get("/public", testimonialController_1.getPublicTestimonials);
 // ============================
-// CREATE (CLIENT)
+// CREATE (USER)
 // ============================
 /**
  * @swagger
  * /api/testimonials:
  *   post:
- *     summary: Create a testimonial (client)
+ *     summary: Create a testimonial (user)
  *     tags: [Testimonials]
  *     security:
  *       - bearerAuth: []
@@ -72,7 +72,7 @@ router.get("/public", testimonialController_1.getPublicTestimonials);
  *       401:
  *         description: Unauthorized
  */
-router.post("/", auth_1.protect, (0, auth_1.authorize)("client"), upload_1.upload.array("files", 1), testimonialController_1.createTestimonial);
+router.post("/", auth_1.protect, (0, auth_1.authorize)("admin", "user"), upload_1.upload.array("files", 1), testimonialController_1.createTestimonial);
 // ============================
 // GET ALL (ADMIN)
 // ============================
@@ -92,7 +92,7 @@ router.post("/", auth_1.protect, (0, auth_1.authorize)("client"), upload_1.uploa
  *       403:
  *         description: Forbidden
  */
-router.get("/", auth_1.protect, (0, auth_1.authorize)("super-admin"), testimonialController_1.getAllTestimonials);
+router.get("/", auth_1.protect, (0, auth_1.authorize)("admin"), testimonialController_1.getAllTestimonials);
 // ============================
 // GET ONE
 // ============================
@@ -117,7 +117,7 @@ router.get("/", auth_1.protect, (0, auth_1.authorize)("super-admin"), testimonia
  *       404:
  *         description: Not found
  */
-router.get("/:id", auth_1.protect, (0, auth_1.authorize)("super-admin"), testimonialController_1.getTestimonialById);
+router.get("/:id", auth_1.protect, (0, auth_1.authorize)("admin"), testimonialController_1.getTestimonialById);
 // ============================
 // UPDATE
 // ============================
@@ -162,7 +162,7 @@ router.get("/:id", auth_1.protect, (0, auth_1.authorize)("super-admin"), testimo
  *       404:
  *         description: Not found
  */
-router.put("/:id", auth_1.protect, (0, auth_1.authorize)("super-admin"), upload_1.upload.array("files", 1), testimonialController_1.updateTestimonial);
+router.put("/:id", auth_1.protect, (0, auth_1.authorize)("admin"), upload_1.upload.array("files", 1), testimonialController_1.updateTestimonial);
 // ============================
 // APPROVE / UNAPPROVE
 // ============================
@@ -196,7 +196,7 @@ router.put("/:id", auth_1.protect, (0, auth_1.authorize)("super-admin"), upload_
  *       404:
  *         description: Not found
  */
-router.patch("/:id/approve", auth_1.protect, (0, auth_1.authorize)("super-admin"), testimonialController_1.approveTestimonial);
+router.patch("/:id/approve", auth_1.protect, (0, auth_1.authorize)("admin"), testimonialController_1.approveTestimonial);
 // ============================
 // DELETE
 // ============================
@@ -221,5 +221,5 @@ router.patch("/:id/approve", auth_1.protect, (0, auth_1.authorize)("super-admin"
  *       404:
  *         description: Not found
  */
-router.delete("/:id", auth_1.protect, (0, auth_1.authorize)("super-admin"), testimonialController_1.deleteTestimonial);
+router.delete("/:id", auth_1.protect, (0, auth_1.authorize)("admin"), testimonialController_1.deleteTestimonial);
 exports.default = router;

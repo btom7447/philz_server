@@ -69,9 +69,24 @@ const propertySchema = new mongoose_1.Schema({
     sold: { type: Boolean, default: false },
     yearBuilt: { type: Number, required: true },
     amenities: [{ type: String }],
-    images: [{ type: String }],
-    videos: [{ type: String }],
-    floorPlans: [{ type: String }],
+    images: [
+        {
+            url: { type: String, required: true },
+            public_id: { type: String, required: true },
+        },
+    ],
+    videos: [
+        {
+            url: { type: String, required: true },
+            public_id: { type: String, required: true },
+        },
+    ],
+    floorPlans: [
+        {
+            url: { type: String, required: true },
+            public_id: { type: String, required: true },
+        },
+    ],
     additionalDetails: { type: mongoose_1.Schema.Types.Mixed },
     createdBy: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true },
 }, { timestamps: true });

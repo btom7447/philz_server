@@ -1,9 +1,14 @@
-import jwt from "jsonwebtoken";
+import jwt, { SignOptions } from "jsonwebtoken";
 
-export const generateToken = (id: string, role: "admin" | "user") => {
+export const generateToken = (
+  id: string,
+  role: "admin" | "user",
+  expiresIn: string = "1h",
+) => {
   const secret = process.env.JWT_SECRET;
   if (!secret)
     throw new Error("JWT_SECRET is not defined in environment variables");
 
-  return jwt.sign({ id, role }, secret, { expiresIn: "1h" });
+  const options: SignOptions = { expiresIn: expiresIn as any };
+  return jwt.sign({ id, role }, secret, options);
 };

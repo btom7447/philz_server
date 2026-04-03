@@ -6,6 +6,9 @@ import {
 } from "../controllers/inquiryController";
 import { protect, authorize } from "../middleware/auth";
 import { publicLimiter } from "../middleware/rateLimiter";
+import { validateRequest } from "../middleware/validateRequest";
+import { inquirySchema } from "../utils/validatorSchemas";
+import { validateObjectId } from "../middleware/validateObjectId";
 
 const router = Router();
 
@@ -44,21 +47,31 @@ const router = Router();
  *                 type: string
  *               propertyId:
  *                 type: string
- *                 description: Optional property ID
  *     responses:
  *       201:
  *         description: Inquiry submitted
  */
-router.post("/", publicLimiter, createInquiry);
+router.post("/", publicLimiter, validateRequest(inquirySchema), createInquiry);
 
 /**
  * @swagger
  * /api/inquiries:
  *   get:
- *     summary: Get all inquiries (admin only)
+ *     summary: Get all inquiries (admin only, paginated)
  *     tags: [Inquiries]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 20
  *     responses:
  *       200:
  *         description: List of inquiries
@@ -69,7 +82,7 @@ router.get("/", protect, authorize("admin"), getAllInquiries);
  * @swagger
  * /api/inquiries/property/{propertyId}:
  *   get:
- *     summary: Get all inquiries for a specific property (public)
+ *     summary: Get all inquiries for a specific property
  *     tags: [Inquiries]
  *     parameters:
  *       - in: path
@@ -77,11 +90,10 @@ router.get("/", protect, authorize("admin"), getAllInquiries);
  *         required: true
  *         schema:
  *           type: string
- *         description: Property ID
  *     responses:
  *       200:
  *         description: List of inquiries for the property
  */
-router.get("/property/:propertyId", getPropertyInquiries);
+router.get("/property/:propertyId", validateObjectId("propertyId"), getPropertyInquiries);
 
 export default router;

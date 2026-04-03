@@ -6,6 +6,7 @@ export interface IInquiry extends Document {
   phone: string;
   message: string;
   propertyId?: mongoose.Types.ObjectId;
+  isDeleted: boolean;
 }
 
 const inquirySchema: Schema<IInquiry> = new Schema(
@@ -15,8 +16,9 @@ const inquirySchema: Schema<IInquiry> = new Schema(
     phone: { type: String, required: true },
     message: { type: String, required: true },
     propertyId: { type: Schema.Types.ObjectId, ref: "Property", index: true },
+    isDeleted: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const Inquiry: Model<IInquiry> = mongoose.model<IInquiry>(

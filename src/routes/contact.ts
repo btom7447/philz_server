@@ -5,6 +5,8 @@ import {
 } from "../controllers/contactController";
 import { protect, authorize } from "../middleware/auth";
 import { publicLimiter } from "../middleware/rateLimiter";
+import { validateRequest } from "../middleware/validateRequest";
+import { contactSchema } from "../utils/validatorSchemas";
 
 const router = Router();
 
@@ -44,16 +46,27 @@ const router = Router();
  *       201:
  *         description: Contact message submitted
  */
-router.post("/", publicLimiter, createContact);
+router.post("/", publicLimiter, validateRequest(contactSchema), createContact);
 
 /**
  * @swagger
  * /api/contact:
  *   get:
- *     summary: Get all contact messages (admin only)
+ *     summary: Get all contact messages (admin only, paginated)
  *     tags: [Contact]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 20
  *     responses:
  *       200:
  *         description: List of all contact messages

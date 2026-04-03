@@ -41,8 +41,15 @@ const bcrypt_1 = __importDefault(require("bcrypt"));
 const userSchema = new mongoose_1.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, lowercase: true },
-    password: { type: String, required: true, select: false }, // hide password by default
-    role: { type: String, enum: ["super-admin", "client"], default: "client" },
+    phone: { type: String, required: false },
+    password: { type: String, required: true, select: false },
+    role: { type: String, enum: ["admin", "user"], default: "user" },
+    adminApproved: { type: Boolean, default: false },
+    emailVerified: { type: Boolean, default: false },
+    emailVerificationToken: { type: String },
+    emailVerificationExpire: { type: Number },
+    avatarUrl: { type: String, default: "" },
+    isDeleted: { type: Boolean, default: false },
     resetPasswordToken: { type: String },
     resetPasswordExpire: { type: Number },
 }, { timestamps: true });
@@ -52,6 +59,16 @@ userSchema.pre("save", async function () {
         return;
     const salt = await bcrypt_1.default.genSalt(12);
     this.password = await bcrypt_1.default.hash(this.password, salt);
+});
+// Exclude soft-deleted users from queries by default
+userSchema.pre("find", function () {
+    this.where({ isDeleted: { $ne: true } });
+});
+userSchema.pre("findOne", function () {
+    this.where({ isDeleted: { $ne: true } });
+});
+userSchema.pre("countDocuments", function () {
+    this.where({ isDeleted: { $ne: true } });
 });
 // Compare password
 userSchema.methods.comparePassword = async function (candidatePassword) {

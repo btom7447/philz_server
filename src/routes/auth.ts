@@ -5,10 +5,16 @@ import {
   logout,
   forgotPassword,
   resetPassword,
-  getCurrentUser, 
-  updateProfile
+  getCurrentUser,
+  updateProfile,
+  verifyEmail,
+  approveAdmin,
+  getPendingAdmins,
+  refreshToken,
+  deleteAccount,
+  getSession,
 } from "../controllers/authController";
-import { publicLimiter } from "../middleware/rateLimiter";
+import { authLimiter, passwordResetLimiter, publicLimiter } from "../middleware/rateLimiter";
 import { validateRequest } from "../middleware/validateRequest";
 import {
   registerSchema,
@@ -16,7 +22,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
 } from "../utils/validatorSchemas";
-import { protect } from "../middleware/auth";
+import { protect, authorize } from "../middleware/auth";
 
 const router = Router();
 
@@ -42,38 +48,24 @@ const router = Router();
  *             properties:
  *               name:
  *                 type: string
- *                 example: "John Doe"
  *               email:
  *                 type: string
- *                 example: "john@example.com"
+ *               phone:
+ *                 type: string
  *               password:
  *                 type: string
- *                 example: "Password@123"
  *     responses:
  *       201:
  *         description: User registered successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *                 user:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                     name:
- *                       type: string
- *                     email:
- *                       type: string
- *                     role:
- *                       type: string
- *                       enum: [admin, user]
  *       400:
- *         description: User already exists or validation error
+ *         description: Validation error or user exists
  */
+router.post(
+  "/register",
+  publicLimiter,
+  validateRequest(registerSchema),
+  register,
+);
 
 /**
  * @swagger
@@ -90,35 +82,47 @@ const router = Router();
  *             properties:
  *               email:
  *                 type: string
- *                 example: "john@example.com"
  *               password:
  *                 type: string
- *                 example: "Password@123"
+ *               rememberMe:
+ *                 type: boolean
  *     responses:
  *       200:
  *         description: User logged in successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *                 user:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                     name:
- *                       type: string
- *                     email:
- *                       type: string
- *                     role:
- *                       type: string
- *                       enum: [admin, user]
  *       401:
  *         description: Invalid credentials
+ *       403:
+ *         description: Admin pending approval
  */
+router.post("/login", authLimiter, validateRequest(loginSchema), login);
+
+/**
+ * @swagger
+ * /api/auth/me:
+ *   get:
+ *     summary: Get current authenticated user
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user data
+ */
+router.get("/me", protect, getCurrentUser);
+
+/**
+ * @swagger
+ * /api/auth/session:
+ *   get:
+ *     summary: Check session status from cookie
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Session is valid
+ *       401:
+ *         description: No valid session
+ */
+router.get("/session", getSession);
 
 /**
  * @swagger
@@ -135,19 +139,24 @@ const router = Router();
  *             properties:
  *               email:
  *                 type: string
- *                 example: "john@example.com"
  *     responses:
  *       200:
  *         description: Password reset email sent
  *       404:
  *         description: User not found
  */
+router.post(
+  "/forgot-password",
+  passwordResetLimiter,
+  validateRequest(forgotPasswordSchema),
+  forgotPassword,
+);
 
 /**
  * @swagger
  * /api/auth/reset-password:
  *   post:
- *     summary: Reset user password
+ *     summary: Reset user password with token
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -158,65 +167,135 @@ const router = Router();
  *             properties:
  *               token:
  *                 type: string
- *                 example: "reset-token-from-email"
  *               newPassword:
  *                 type: string
- *                 example: "newStrongPassword123"
  *     responses:
  *       200:
  *         description: Password reset successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 token:
- *                   type: string
  *       400:
  *         description: Token invalid or expired
  */
+router.post(
+  "/reset-password",
+  passwordResetLimiter,
+  validateRequest(resetPasswordSchema),
+  resetPassword,
+);
+
+/**
+ * @swagger
+ * /api/auth/verify-email:
+ *   post:
+ *     summary: Verify user email address
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               token:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Email verified
+ */
+router.post("/verify-email", publicLimiter, verifyEmail);
+
+/**
+ * @swagger
+ * /api/auth/refresh:
+ *   post:
+ *     summary: Refresh the JWT token
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: New token issued
+ */
+router.post("/refresh", protect, refreshToken);
+
+/**
+ * @swagger
+ * /api/auth/update-profile:
+ *   put:
+ *     summary: Update user profile
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profile updated
+ */
+router.put("/update-profile", protect, updateProfile);
 
 /**
  * @swagger
  * /api/auth/logout:
  *   post:
- *     summary: Logout the current user
+ *     summary: Logout and revoke token
  *     tags: [Auth]
  *     responses:
  *       200:
- *         description: User logged out successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
+ *         description: Logged out successfully
  */
-
-router.post(
-  "/register",
-  publicLimiter,
-  validateRequest(registerSchema),
-  register
-);
-router.post("/login", publicLimiter, validateRequest(loginSchema), login);
-router.get("/me", protect, getCurrentUser);
-router.post(
-  "/forgot-password",
-  publicLimiter,
-  validateRequest(forgotPasswordSchema),
-  forgotPassword
-);
-router.post(
-  "/reset-password",
-  publicLimiter,
-  validateRequest(resetPasswordSchema),
-  resetPassword
-);
-router.put("/update-profile", protect, updateProfile);
 router.post("/logout", logout);
+
+/**
+ * @swagger
+ * /api/auth/delete-account:
+ *   delete:
+ *     summary: Soft-delete user account and related data
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Account deleted
+ */
+router.delete("/delete-account", protect, deleteAccount);
+
+// ---- Admin-only routes ----
+
+/**
+ * @swagger
+ * /api/auth/admin/pending:
+ *   get:
+ *     summary: Get pending admin approval requests
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of pending admin users
+ */
+router.get("/admin/pending", protect, authorize("admin"), getPendingAdmins);
+
+/**
+ * @swagger
+ * /api/auth/admin/approve:
+ *   post:
+ *     summary: Approve or deny admin access
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *               approved:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Admin approval status updated
+ */
+router.post("/admin/approve", protect, authorize("admin"), approveAdmin);
 
 export default router;

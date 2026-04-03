@@ -8,6 +8,7 @@ import {
 } from "../controllers/propertyController";
 import { protect, authorize } from "../middleware/auth";
 import { upload } from "../middleware/upload";
+import { validateObjectId } from "../middleware/validateObjectId";
 
 const router = Router();
 
@@ -22,8 +23,48 @@ const router = Router();
  * @swagger
  * /api/properties:
  *   get:
- *     summary: Get all properties (public)
+ *     summary: Get all properties (public, paginated)
  *     tags: [Properties]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 12
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: "createdAt:desc"
+ *       - in: query
+ *         name: title
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: location
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: propertyType
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: maxPrice
+ *         schema:
+ *           type: number
+ *       - in: query
+ *         name: amenities
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: List of properties
@@ -42,14 +83,15 @@ router.get("/", getAllProperties);
  *         required: true
  *         schema:
  *           type: string
- *         description: Property ID
  *     responses:
  *       200:
  *         description: Property details
+ *       400:
+ *         description: Invalid ID
  *       404:
  *         description: Property not found
  */
-router.get("/:id", getPropertyById);
+router.get("/:id", validateObjectId("id"), getPropertyById);
 
 /**
  * @swagger
@@ -59,88 +101,23 @@ router.get("/:id", getPropertyById);
  *     tags: [Properties]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *               description:
- *                 type: string
- *               propertyType:
- *                 type: string
- *                 enum: [apartment, house, office, shop]
- *               address:
- *                 type: object
- *                 properties:
- *                   city:
- *                     type: string
- *                   state:
- *                     type: string
- *               location:
- *                 type: object
- *                 properties:
- *                   latitude:
- *                     type: number
- *                   longitude:
- *                     type: number
- *               bedrooms:
- *                 type: integer
- *               bathrooms:
- *                 type: integer
- *               toilets:
- *                 type: integer
- *               area:
- *                 type: number
- *                 description: Size in sq ft
- *               garages:
- *                 type: integer
- *               price:
- *                 type: number
- *               status:
- *                 type: string
- *                 enum: [for sale, for rent]
- *               featured:
- *                 type: boolean
- *               sold:
- *                 type: boolean
- *               yearBuilt:
- *                 type: integer
- *               amenities:
- *                 type: array
- *                 items:
- *                   type: string
- *               additionalDetails:
- *                 type: object
- *                 description: Extra details like bedroom features, doors, windows, floors, etc.
- *               files:
- *                 type: array
- *                 items:
- *                   type: string
- *                 format: binary
- *                 description: Images, videos, or floor plans
  *     responses:
  *       201:
- *         description: Property created successfully
- *       400:
- *         description: Missing required fields
+ *         description: Property created
  */
 router.post(
   "/",
   protect,
   authorize("admin"),
   upload.array("files"),
-  createProperty
+  createProperty,
 );
 
 /**
  * @swagger
  * /api/properties/{id}:
  *   patch:
- *     summary: Update property fields (admin only)
+ *     summary: Update property fields (admin only, whitelisted fields)
  *     tags: [Properties]
  *     security:
  *       - bearerAuth: []
@@ -150,28 +127,11 @@ router.post(
  *         required: true
  *         schema:
  *           type: string
- *         description: Property ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               featured:
- *                 type: boolean
- *               sold:
- *                 type: boolean
- *               status:
- *                 type: string
- *                 enum: [for sale, for rent]
  *     responses:
  *       200:
  *         description: Property updated
- *       404:
- *         description: Property not found
  */
-router.patch("/:id", protect, authorize("admin"), updateProperty);
+router.patch("/:id", protect, authorize("admin"), validateObjectId("id"), updateProperty);
 
 /**
  * @swagger
@@ -187,13 +147,10 @@ router.patch("/:id", protect, authorize("admin"), updateProperty);
  *         required: true
  *         schema:
  *           type: string
- *         description: Property ID
  *     responses:
  *       200:
- *         description: Property deleted successfully
- *       404:
- *         description: Property not found
+ *         description: Property deleted
  */
-router.delete("/:id", protect, authorize("admin"), deleteProperty);
+router.delete("/:id", protect, authorize("admin"), validateObjectId("id"), deleteProperty);
 
 export default router;

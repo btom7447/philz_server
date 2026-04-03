@@ -40,6 +40,7 @@ const inquirySchema = new mongoose_1.Schema({
     phone: { type: String, required: true },
     message: { type: String, required: true },
     propertyId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Property", index: true },
+    isDeleted: { type: Boolean, default: false },
 }, { timestamps: true });
 const Inquiry = mongoose_1.default.model("Inquiry", inquirySchema);
 exports.default = Inquiry;

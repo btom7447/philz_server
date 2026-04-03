@@ -34,13 +34,9 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const contactSchema = new mongoose_1.Schema({
-    name: { type: String, required: true },
-    email: { type: String, required: true },
-    phone: { type: String },
-    subject: { type: String },
-    message: { type: String, required: true },
-    isDeleted: { type: Boolean, default: false },
-}, { timestamps: true });
-const Contact = mongoose_1.default.model("Contact", contactSchema);
-exports.default = Contact;
+const tokenBlacklistSchema = new mongoose_1.Schema({
+    token: { type: String, required: true, unique: true, index: true },
+    expiresAt: { type: Date, required: true, index: { expires: 0 } }, // TTL index: auto-delete when expired
+});
+const TokenBlacklist = mongoose_1.default.model("TokenBlacklist", tokenBlacklistSchema);
+exports.default = TokenBlacklist;

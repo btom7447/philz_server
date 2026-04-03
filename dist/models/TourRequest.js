@@ -58,6 +58,8 @@ const tourRequestSchema = new mongoose_1.Schema({
     requestedAt: { type: Date, default: Date.now },
     approvedBy: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
     rescheduled: { type: Boolean, default: false },
+    meetLink: { type: String },
+    isDeleted: { type: Boolean, default: false },
 }, { timestamps: true });
 // Compound index for common queries: user + status + tourTime
 tourRequestSchema.index({ userId: 1, status: 1, tourTime: 1 });

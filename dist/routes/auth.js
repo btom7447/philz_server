@@ -5,6 +5,7 @@ const authController_1 = require("../controllers/authController");
 const rateLimiter_1 = require("../middleware/rateLimiter");
 const validateRequest_1 = require("../middleware/validateRequest");
 const validatorSchemas_1 = require("../utils/validatorSchemas");
+const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
 /**
  * @swagger
@@ -27,38 +28,19 @@ const router = (0, express_1.Router)();
  *             properties:
  *               name:
  *                 type: string
- *                 example: "John Doe"
  *               email:
  *                 type: string
- *                 example: "john@example.com"
+ *               phone:
+ *                 type: string
  *               password:
  *                 type: string
- *                 example: "Password@123"
  *     responses:
  *       201:
  *         description: User registered successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *                 user:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                     name:
- *                       type: string
- *                     email:
- *                       type: string
- *                     role:
- *                       type: string
- *                       enum: [super-admin, client]
  *       400:
- *         description: User already exists or validation error
+ *         description: Validation error or user exists
  */
+router.post("/register", rateLimiter_1.publicLimiter, (0, validateRequest_1.validateRequest)(validatorSchemas_1.registerSchema), authController_1.register);
 /**
  * @swagger
  * /api/auth/login:
@@ -74,35 +56,45 @@ const router = (0, express_1.Router)();
  *             properties:
  *               email:
  *                 type: string
- *                 example: "john@example.com"
  *               password:
  *                 type: string
- *                 example: "Password@123"
+ *               rememberMe:
+ *                 type: boolean
  *     responses:
  *       200:
  *         description: User logged in successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *                 user:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                     name:
- *                       type: string
- *                     email:
- *                       type: string
- *                     role:
- *                       type: string
- *                       enum: [super-admin, client]
  *       401:
  *         description: Invalid credentials
+ *       403:
+ *         description: Admin pending approval
  */
+router.post("/login", rateLimiter_1.authLimiter, (0, validateRequest_1.validateRequest)(validatorSchemas_1.loginSchema), authController_1.login);
+/**
+ * @swagger
+ * /api/auth/me:
+ *   get:
+ *     summary: Get current authenticated user
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user data
+ */
+router.get("/me", auth_1.protect, authController_1.getCurrentUser);
+/**
+ * @swagger
+ * /api/auth/session:
+ *   get:
+ *     summary: Check session status from cookie
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Session is valid
+ *       401:
+ *         description: No valid session
+ */
+router.get("/session", authController_1.getSession);
 /**
  * @swagger
  * /api/auth/forgot-password:
@@ -118,18 +110,18 @@ const router = (0, express_1.Router)();
  *             properties:
  *               email:
  *                 type: string
- *                 example: "john@example.com"
  *     responses:
  *       200:
  *         description: Password reset email sent
  *       404:
  *         description: User not found
  */
+router.post("/forgot-password", rateLimiter_1.passwordResetLimiter, (0, validateRequest_1.validateRequest)(validatorSchemas_1.forgotPasswordSchema), authController_1.forgotPassword);
 /**
  * @swagger
  * /api/auth/reset-password:
  *   post:
- *     summary: Reset user password
+ *     summary: Reset user password with token
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -140,45 +132,121 @@ const router = (0, express_1.Router)();
  *             properties:
  *               token:
  *                 type: string
- *                 example: "reset-token-from-email"
  *               newPassword:
  *                 type: string
- *                 example: "newStrongPassword123"
  *     responses:
  *       200:
  *         description: Password reset successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 token:
- *                   type: string
  *       400:
  *         description: Token invalid or expired
  */
+router.post("/reset-password", rateLimiter_1.passwordResetLimiter, (0, validateRequest_1.validateRequest)(validatorSchemas_1.resetPasswordSchema), authController_1.resetPassword);
+/**
+ * @swagger
+ * /api/auth/verify-email:
+ *   post:
+ *     summary: Verify user email address
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               token:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Email verified
+ */
+router.post("/verify-email", rateLimiter_1.publicLimiter, authController_1.verifyEmail);
+/**
+ * @swagger
+ * /api/auth/refresh:
+ *   post:
+ *     summary: Refresh the JWT token
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: New token issued
+ */
+router.post("/refresh", auth_1.protect, authController_1.refreshToken);
+/**
+ * @swagger
+ * /api/auth/update-profile:
+ *   put:
+ *     summary: Update user profile
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profile updated
+ */
+router.put("/update-profile", auth_1.protect, authController_1.updateProfile);
 /**
  * @swagger
  * /api/auth/logout:
  *   post:
- *     summary: Logout the current user
+ *     summary: Logout and revoke token
  *     tags: [Auth]
  *     responses:
  *       200:
- *         description: User logged out successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
+ *         description: Logged out successfully
  */
-router.post("/register", rateLimiter_1.publicLimiter, (0, validateRequest_1.validateRequest)(validatorSchemas_1.registerSchema), authController_1.register);
-router.post("/login", rateLimiter_1.publicLimiter, (0, validateRequest_1.validateRequest)(validatorSchemas_1.loginSchema), authController_1.login);
-router.post("/forgot-password", rateLimiter_1.publicLimiter, (0, validateRequest_1.validateRequest)(validatorSchemas_1.forgotPasswordSchema), authController_1.forgotPassword);
-router.post("/reset-password", rateLimiter_1.publicLimiter, (0, validateRequest_1.validateRequest)(validatorSchemas_1.resetPasswordSchema), authController_1.resetPassword);
 router.post("/logout", authController_1.logout);
+/**
+ * @swagger
+ * /api/auth/delete-account:
+ *   delete:
+ *     summary: Soft-delete user account and related data
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Account deleted
+ */
+router.delete("/delete-account", auth_1.protect, authController_1.deleteAccount);
+// ---- Admin-only routes ----
+/**
+ * @swagger
+ * /api/auth/admin/pending:
+ *   get:
+ *     summary: Get pending admin approval requests
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of pending admin users
+ */
+router.get("/admin/pending", auth_1.protect, (0, auth_1.authorize)("admin"), authController_1.getPendingAdmins);
+/**
+ * @swagger
+ * /api/auth/admin/approve:
+ *   post:
+ *     summary: Approve or deny admin access
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *               approved:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Admin approval status updated
+ */
+router.post("/admin/approve", auth_1.protect, (0, auth_1.authorize)("admin"), authController_1.approveAdmin);
 exports.default = router;

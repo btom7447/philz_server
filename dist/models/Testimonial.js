@@ -39,8 +39,12 @@ const testimonialSchema = new mongoose_1.Schema({
     title: { type: String, required: true },
     content: { type: String, required: true },
     rating: { type: Number, min: 1, max: 5, required: true },
-    image: { type: String },
-    imagePublicId: { type: String },
+    images: [
+        {
+            url: { type: String, required: true },
+            public_id: { type: String, required: true },
+        },
+    ],
     approved: { type: Boolean, default: false, index: true },
     isDeleted: { type: Boolean, default: false },
 }, { timestamps: true });

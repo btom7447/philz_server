@@ -34,13 +34,15 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const contactSchema = new mongoose_1.Schema({
-    name: { type: String, required: true },
-    email: { type: String, required: true },
-    phone: { type: String },
-    subject: { type: String },
-    message: { type: String, required: true },
-    isDeleted: { type: Boolean, default: false },
+const auditLogSchema = new mongoose_1.Schema({
+    userId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true },
+    action: { type: String, required: true }, // e.g. "create", "update", "delete", "login", "approve"
+    resource: { type: String, required: true }, // e.g. "property", "tour", "user"
+    resourceId: { type: String },
+    details: { type: mongoose_1.Schema.Types.Mixed },
+    ip: { type: String },
 }, { timestamps: true });
-const Contact = mongoose_1.default.model("Contact", contactSchema);
-exports.default = Contact;
+auditLogSchema.index({ userId: 1, createdAt: -1 });
+auditLogSchema.index({ resource: 1, action: 1, createdAt: -1 });
+const AuditLog = mongoose_1.default.model("AuditLog", auditLogSchema);
+exports.default = AuditLog;

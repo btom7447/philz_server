@@ -1,7 +1,45 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import Property from "../models/Property";
+import AuditLog from "../models/AuditLog";
 import cloudinary from "../utils/cloudinary";
 import { SortOrder } from "mongoose";
+
+// Fields allowed for property updates
+const ALLOWED_UPDATE_FIELDS = [
+  "title",
+  "description",
+  "propertyType",
+  "address",
+  "location",
+  "bedrooms",
+  "bathrooms",
+  "toilets",
+  "area",
+  "garages",
+  "price",
+  "status",
+  "featured",
+  "sold",
+  "yearBuilt",
+  "amenities",
+  "images",
+  "videos",
+  "floorPlans",
+  "additionalDetails",
+];
+
+/** Escape special regex characters to prevent ReDoS / injection */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Parse string-to-boolean reliably */
+function parseBool(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value.toLowerCase() === "true";
+  return Boolean(value);
+}
 
 // ============================
 // CREATE PROPERTY
@@ -54,9 +92,16 @@ export const createProperty = async (req: Request, res: Response) => {
         .json({ message: "All required fields must be provided" });
     }
 
+    // Validate lat/lng ranges
+    const lat = Number(location.latitude);
+    const lng = Number(location.longitude);
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({ message: "Invalid latitude or longitude" });
+    }
+
     const geoLocation = {
       type: "Point",
-      coordinates: [Number(location.longitude), Number(location.latitude)],
+      coordinates: [lng, lat],
     };
 
     const property = await Property.create({
@@ -72,8 +117,8 @@ export const createProperty = async (req: Request, res: Response) => {
       garages: Number(garages),
       price: Number(price),
       status,
-      featured: Boolean(featured),
-      sold: Boolean(sold),
+      featured: parseBool(featured),
+      sold: parseBool(sold),
       yearBuilt: Number(yearBuilt),
       amenities,
       images,
@@ -81,6 +126,14 @@ export const createProperty = async (req: Request, res: Response) => {
       floorPlans,
       additionalDetails: additionalDetails || {},
       createdBy: req.user!._id,
+    });
+
+    await AuditLog.create({
+      userId: req.user!._id,
+      action: "create",
+      resource: "property",
+      resourceId: property._id.toString(),
+      ip: req.ip,
     });
 
     res.status(201).json({ message: "Property created", property });
@@ -95,18 +148,48 @@ export const createProperty = async (req: Request, res: Response) => {
 // ============================
 export const updateProperty = async (req: Request, res: Response) => {
   try {
-    const property = await Property.findById(req.params.id);
+    const id = req.params.id as string;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid property ID" });
+    }
+
+    const property = await Property.findById(id);
     if (!property)
       return res.status(404).json({ message: "Property not found" });
 
     const updates = req.body;
 
-    Object.keys(updates).forEach((key) => {
-      // @ts-ignore
-      if (updates[key] !== undefined) property[key] = updates[key];
-    });
+    // Only allow whitelisted fields
+    for (const key of Object.keys(updates)) {
+      if (!ALLOWED_UPDATE_FIELDS.includes(key)) continue;
+      const value = updates[key];
+      if (value === undefined) continue;
+
+      if (key === "featured" || key === "sold") {
+        (property as any)[key] = parseBool(value);
+      } else if (key === "location" && value.latitude !== undefined && value.longitude !== undefined) {
+        const lat = Number(value.latitude);
+        const lng = Number(value.longitude);
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+          return res.status(400).json({ message: "Invalid latitude or longitude" });
+        }
+        property.location = { type: "Point", coordinates: [lng, lat] };
+      } else {
+        (property as any)[key] = value;
+      }
+    }
 
     await property.save();
+
+    await AuditLog.create({
+      userId: req.user!._id,
+      action: "update",
+      resource: "property",
+      resourceId: id,
+      details: { updatedFields: Object.keys(updates).filter((k) => ALLOWED_UPDATE_FIELDS.includes(k)) },
+      ip: req.ip,
+    });
+
     res.json({ message: "Property updated", property });
   } catch (err: any) {
     console.error("Update property error:", err);
@@ -119,7 +202,12 @@ export const updateProperty = async (req: Request, res: Response) => {
 // ============================
 export const getPropertyById = async (req: Request, res: Response) => {
   try {
-    const property = await Property.findById(req.params.id).lean();
+    const id = req.params.id as string;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid property ID" });
+    }
+
+    const property = await Property.findById(id).lean();
     if (!property)
       return res.status(404).json({ message: "Property not found" });
 
@@ -172,8 +260,12 @@ export const getAllProperties = async (req: Request, res: Response) => {
     // --------------------
     const filter: Record<string, any> = {};
 
-    if (propertyType) filter.propertyType = propertyType;
-    if (status) filter.status = status;
+    if (propertyType && typeof propertyType === "string" && propertyType.trim()) {
+      filter.propertyType = propertyType;
+    }
+    if (status && typeof status === "string" && status.trim()) {
+      filter.status = status;
+    }
 
     if (maxPrice) {
       const price = Number(maxPrice);
@@ -193,17 +285,18 @@ export const getAllProperties = async (req: Request, res: Response) => {
       }
     }
 
-    if (location) {
+    if (location && typeof location === "string" && location.trim()) {
+      const escaped = escapeRegex(location as string);
       filter.$or = [
-        { "address.city": { $regex: location, $options: "i" } },
-        { "address.state": { $regex: location, $options: "i" } },
+        { "address.city": { $regex: escaped, $options: "i" } },
+        { "address.state": { $regex: escaped, $options: "i" } },
       ];
     }
 
     // --------------------
     // Text Search (requires text index)
     // --------------------
-    if (title) {
+    if (title && typeof title === "string" && title.trim()) {
       filter.$text = { $search: title as string };
     }
 
@@ -228,13 +321,17 @@ export const getAllProperties = async (req: Request, res: Response) => {
   }
 };
 
-
 // ============================
 // DELETE PROPERTY
 // ============================
 export const deleteProperty = async (req: Request, res: Response) => {
   try {
-    const property = await Property.findById(req.params.id);
+    const id = req.params.id as string;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid property ID" });
+    }
+
+    const property = await Property.findById(id);
 
     if (!property) {
       return res.status(404).json({ message: "Property not found" });
@@ -264,6 +361,14 @@ export const deleteProperty = async (req: Request, res: Response) => {
     );
 
     await property.deleteOne();
+
+    await AuditLog.create({
+      userId: req.user!._id,
+      action: "delete",
+      resource: "property",
+      resourceId: id,
+      ip: req.ip,
+    });
 
     res.json({ message: "Property deleted successfully" });
   } catch (err: any) {

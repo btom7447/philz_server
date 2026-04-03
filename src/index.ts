@@ -22,18 +22,11 @@ import errorHandler from "./middleware/errorHandler";
 
 // Swagger
 import swaggerUi from "swagger-ui-express";
-import { getSession } from "./controllers/authController";
-import router from "./routes/auth";
 const swaggerJsdoc = require("swagger-jsdoc");
 
 // ---------------- Database ----------------
 connectDB();
 const app = express();
-
-// ---------------- Security & Parsing ----------------
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(express.json({ limit: "10kb" }));
-app.use(cookieParser());
 
 // ---------------- Environment ----------------
 const isProd = process.env.NODE_ENV === "production";
@@ -45,25 +38,45 @@ const PORT = isProd
   ? process.env.PROD_PORT || 8000
   : process.env.DEV_PORT || 5000;
 
+// ---------------- Security & Parsing ----------------
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        imgSrc: ["'self'", "data:", "https://res.cloudinary.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        connectSrc: ["'self'", FRONTEND_URL || "http://localhost:3000"],
+      },
+    },
+  }),
+);
+app.use(express.json({ limit: "10kb" }));
+app.use(cookieParser());
+
 // ---------------- CORS ----------------
-const allowedOrigins = [FRONTEND_URL, `http://localhost:3000`]; // local dev always 3000
+const allowedOrigins = [FRONTEND_URL, "http://localhost:3000"].filter(Boolean) as string[];
 
 app.use(
   cors({
     origin: function (origin, callback) {
+      // In production, require an origin header
       if (!origin) {
-        // Allow requests like Postman, curl, mobile apps
+        if (isProd) {
+          return callback(new Error("CORS: origin required in production"));
+        }
+        // Allow in development (Postman, curl, etc.)
         return callback(null, true);
       }
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
-      } else {
-        console.warn(`Blocked CORS request from origin: ${origin}`);
-        return callback(new Error("CORS not allowed"));
       }
+      return callback(new Error("CORS not allowed"));
     },
     credentials: true,
-  })
+  }),
 );
 
 // ---------------- Swagger ----------------
@@ -76,7 +89,11 @@ const swaggerOptions = {
       description: "API documentation for Philz Properties",
     },
     servers: [
-      { url: `http://localhost:${PORT}` }, // Swagger always hits backend port
+      {
+        url: isProd
+          ? `${process.env.PROD_BACKEND_URL || `https://philz-server.onrender.com`}`
+          : `http://localhost:${PORT}`,
+      },
     ],
     components: {
       securitySchemes: {
@@ -89,12 +106,12 @@ const swaggerOptions = {
 app.use(
   "/api/docs",
   swaggerUi.serve,
-  swaggerUi.setup(swaggerJsdoc(swaggerOptions))
+  swaggerUi.setup(swaggerJsdoc(swaggerOptions)),
 );
 
 // ---------------- Routes ----------------
-app.get("/", (req: Request, res: Response) =>
-  res.send("Philz Properties API is running")
+app.get("/", (_req: Request, res: Response) =>
+  res.send("Philz Properties API is running"),
 );
 app.use("/api/auth", authRoutes);
 app.use("/api/properties", propertyRoutes);
@@ -104,8 +121,6 @@ app.use("/api/contact", contactRoutes);
 app.use("/api/testimonials", testimonialRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/upload", uploadRoutes);
-
-router.get("/session", getSession)
 
 // ---------------- Error Handling ----------------
 app.use(errorHandler);

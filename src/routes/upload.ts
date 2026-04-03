@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { upload } from "../middleware/upload";
+import { protect } from "../middleware/auth";
 import cloudinary from "../utils/cloudinary";
 
 const router = Router();
@@ -8,37 +9,23 @@ const router = Router();
  * @swagger
  * /api/upload:
  *   post:
- *     summary: Upload multiple images/videos
+ *     summary: Upload multiple images/videos (requires auth)
+ *     security:
+ *       - bearerAuth: []
  *     consumes:
  *       - multipart/form-data
- *     parameters:
- *       - in: formData
- *         name: files
- *         type: file
- *         required: true
- *         description: Files to upload (images or videos)
- *       - in: formData
- *         name: folder
- *         type: string
- *         required: true
- *         description: Main folder (e.g., properties, testimonials)
- *       - in: formData
- *         name: subfolder
- *         type: string
- *         required: false
- *         description: Optional subfolder (e.g., images, videos)
  *     responses:
  *       200:
  *         description: Files uploaded successfully
+ *       401:
+ *         description: Unauthorized
  *       400:
  *         description: Invalid file or request
- *       500:
- *         description: Upload failed
  */
 
-// Handle multiple fields at once
 router.post(
   "/",
+  protect,
   upload.fields([
     { name: "images", maxCount: 10 },
     { name: "videos", maxCount: 5 },

@@ -41,13 +41,17 @@ const paymentSchema = new mongoose_1.Schema({
         ref: "Property",
         required: true,
     },
-    paystackReference: { type: String, required: true },
+    paystackReference: { type: String, required: true, unique: true },
+    paystackAccessCode: { type: String },
+    paystackAuthorizationUrl: { type: String },
     status: {
         type: String,
         enum: ["pending", "success", "failed"],
         required: true,
     },
     amount: { type: Number, required: true },
+    idempotencyKey: { type: String, unique: true, sparse: true },
+    isDeleted: { type: Boolean, default: false },
 }, { timestamps: true });
 const Payment = mongoose_1.default.model("Payment", paymentSchema);
 exports.default = Payment;

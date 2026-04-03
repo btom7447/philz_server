@@ -4,6 +4,8 @@ const express_1 = require("express");
 const contactController_1 = require("../controllers/contactController");
 const auth_1 = require("../middleware/auth");
 const rateLimiter_1 = require("../middleware/rateLimiter");
+const validateRequest_1 = require("../middleware/validateRequest");
+const validatorSchemas_1 = require("../utils/validatorSchemas");
 const router = (0, express_1.Router)();
 /**
  * @swagger
@@ -40,18 +42,29 @@ const router = (0, express_1.Router)();
  *       201:
  *         description: Contact message submitted
  */
-router.post("/", rateLimiter_1.publicLimiter, contactController_1.createContact);
+router.post("/", rateLimiter_1.publicLimiter, (0, validateRequest_1.validateRequest)(validatorSchemas_1.contactSchema), contactController_1.createContact);
 /**
  * @swagger
  * /api/contact:
  *   get:
- *     summary: Get all contact messages (super-admin only)
+ *     summary: Get all contact messages (admin only, paginated)
  *     tags: [Contact]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 20
  *     responses:
  *       200:
  *         description: List of all contact messages
  */
-router.get("/", auth_1.protect, (0, auth_1.authorize)("super-admin"), contactController_1.getAllContacts);
+router.get("/", auth_1.protect, (0, auth_1.authorize)("admin"), contactController_1.getAllContacts);
 exports.default = router;

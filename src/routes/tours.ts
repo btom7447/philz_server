@@ -8,6 +8,9 @@ import {
   cancelTour,
 } from "../controllers/tourController";
 import { protect, authorize } from "../middleware/auth";
+import { validateRequest } from "../middleware/validateRequest";
+import { tourRequestSchema } from "../utils/validatorSchemas";
+import { validateObjectId } from "../middleware/validateObjectId";
 
 const router = Router();
 
@@ -39,24 +42,17 @@ const router = Router();
  *             properties:
  *               propertyId:
  *                 type: string
- *                 description: ID of the property to tour
  *               type:
  *                 type: string
  *                 enum: [virtual, in-person]
- *                 description: Type of tour
  *               tourTime:
  *                 type: string
  *                 format: date-time
- *                 description: Scheduled time for the tour
  *     responses:
  *       201:
  *         description: Tour requested successfully
- *       400:
- *         description: Missing required fields
- *       500:
- *         description: Server error
  */
-router.post("/", protect, requestTour);
+router.post("/", protect, validateRequest(tourRequestSchema), requestTour);
 
 /**
  * @swagger
@@ -72,20 +68,18 @@ router.post("/", protect, requestTour);
  *         schema:
  *           type: string
  *           enum: [pending, approved, rejected, canceled]
- *         description: Filter by status
  *       - in: query
  *         name: type
  *         schema:
  *           type: string
  *           enum: [virtual, in-person]
- *         description: Filter by tour type
  *       - in: query
  *         name: page
  *         schema:
  *           type: integer
  *           default: 1
  *       - in: query
- *         name: limit
+ *         name: pageSize
  *         schema:
  *           type: integer
  *           default: 10
@@ -94,12 +88,9 @@ router.post("/", protect, requestTour);
  *         schema:
  *           type: string
  *           default: -tourTime
- *         description: Sort field (prefix with - for descending)
  *     responses:
  *       200:
- *         description: List of user's tours with pagination metadata
- *       500:
- *         description: Server error
+ *         description: List of user's tours with pagination
  */
 router.get("/", protect, getUserTours);
 
@@ -117,31 +108,11 @@ router.get("/", protect, getUserTours);
  *         required: true
  *         schema:
  *           type: string
- *         description: Tour ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - tourTime
- *             properties:
- *               tourTime:
- *                 type: string
- *                 format: date-time
- *                 description: New tour time
  *     responses:
  *       200:
- *         description: Tour rescheduled successfully
- *       403:
- *         description: Unauthorized
- *       404:
- *         description: Tour not found
- *       500:
- *         description: Server error
+ *         description: Tour rescheduled
  */
-router.patch("/:id/reschedule", protect, rescheduleTour);
+router.patch("/:id/reschedule", protect, validateObjectId("id"), rescheduleTour);
 
 /**
  * @swagger
@@ -157,18 +128,11 @@ router.patch("/:id/reschedule", protect, rescheduleTour);
  *         required: true
  *         schema:
  *           type: string
- *         description: Tour ID
  *     responses:
  *       200:
- *         description: Tour canceled successfully
- *       403:
- *         description: Unauthorized
- *       404:
- *         description: Tour not found
- *       500:
- *         description: Server error
+ *         description: Tour canceled
  */
-router.patch("/:id/cancel", protect, cancelTour);
+router.patch("/:id/cancel", protect, validateObjectId("id"), cancelTour);
 
 /**
  * @swagger
@@ -183,40 +147,23 @@ router.patch("/:id/cancel", protect, cancelTour);
  *         name: status
  *         schema:
  *           type: string
- *           enum: [pending, approved, rejected, canceled]
- *         description: Filter by status
  *       - in: query
  *         name: type
  *         schema:
  *           type: string
- *           enum: [virtual, in-person]
- *         description: Filter by tour type
- *       - in: query
- *         name: propertyId
- *         schema:
- *           type: string
- *         description: Filter by property
  *       - in: query
  *         name: page
  *         schema:
  *           type: integer
  *           default: 1
  *       - in: query
- *         name: limit
+ *         name: pageSize
  *         schema:
  *           type: integer
  *           default: 20
- *       - in: query
- *         name: sort
- *         schema:
- *           type: string
- *           default: -tourTime
- *         description: Sort field
  *     responses:
  *       200:
- *         description: List of all tours with pagination
- *       500:
- *         description: Server error
+ *         description: All tours with pagination
  */
 router.get("/admin/all", protect, authorize("admin"), getAllTours);
 
@@ -234,28 +181,10 @@ router.get("/admin/all", protect, authorize("admin"), getAllTours);
  *         required: true
  *         schema:
  *           type: string
- *         description: Tour ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - status
- *             properties:
- *               status:
- *                 type: string
- *                 enum: [approved, rejected]
- *                 description: Status to update
  *     responses:
  *       200:
- *         description: Tour approved/rejected successfully
- *       404:
- *         description: Tour not found
- *       500:
- *         description: Server error
+ *         description: Tour status updated
  */
-router.patch("/:id/approve", protect, authorize("admin"), approveTour);
+router.patch("/:id/approve", protect, authorize("admin"), validateObjectId("id"), approveTour);
 
 export default router;

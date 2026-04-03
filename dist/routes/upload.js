@@ -1,55 +1,73 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const upload_1 = require("../middleware/upload");
-const uploadHelper_1 = require("../utils/uploadHelper");
+const auth_1 = require("../middleware/auth");
+const cloudinary_1 = __importDefault(require("../utils/cloudinary"));
 const router = (0, express_1.Router)();
 /**
  * @swagger
  * /api/upload:
  *   post:
- *     summary: Upload multiple images/videos
+ *     summary: Upload multiple images/videos (requires auth)
+ *     security:
+ *       - bearerAuth: []
  *     consumes:
  *       - multipart/form-data
- *     parameters:
- *       - in: formData
- *         name: files
- *         type: file
- *         required: true
- *         description: Files to upload (images or videos)
- *       - in: formData
- *         name: folder
- *         type: string
- *         required: true
- *         description: Main folder (e.g., properties, testimonials)
- *       - in: formData
- *         name: subfolder
- *         type: string
- *         required: false
- *         description: Optional subfolder (e.g., images, videos)
  *     responses:
  *       200:
  *         description: Files uploaded successfully
+ *       401:
+ *         description: Unauthorized
  *       400:
  *         description: Invalid file or request
- *       500:
- *         description: Upload failed
  */
-router.post("/", upload_1.upload.array("files"), async (req, res) => {
+router.post("/", auth_1.protect, upload_1.upload.fields([
+    { name: "images", maxCount: 10 },
+    { name: "videos", maxCount: 5 },
+    { name: "floorPlans", maxCount: 5 },
+]), async (req, res) => {
     try {
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ message: "No files uploaded" });
-        }
         const files = req.files;
-        const { folder, subfolder } = req.body;
-        if (!folder) {
-            return res.status(400).json({ message: "Folder is required" });
+        const uploadOne = (file, folder, resource_type) => {
+            return new Promise((resolve, reject) => {
+                cloudinary_1.default.uploader
+                    .upload_stream({
+                    folder,
+                    resource_type,
+                }, (err, result) => {
+                    if (err || !result)
+                        return reject(err);
+                    resolve({
+                        url: result.secure_url,
+                        public_id: result.public_id,
+                        resource_type,
+                    });
+                })
+                    .end(file.buffer);
+            });
+        };
+        const uploads = [];
+        for (const file of files.images || []) {
+            uploads.push(uploadOne(file, "properties/images", "image"));
         }
-        const { uploaded, failed } = await (0, uploadHelper_1.uploadFilesToCloudinary)(files, folder, subfolder);
+        for (const file of files.videos || []) {
+            uploads.push(uploadOne(file, "properties/videos", "video"));
+        }
+        for (const file of files.floorPlans || []) {
+            uploads.push(uploadOne(file, "properties/floor-plans", "image"));
+        }
+        const results = await Promise.allSettled(uploads);
         res.status(200).json({
-            message: "Files processed",
-            uploaded,
-            failed: failed.length > 0 ? failed : undefined,
+            uploaded: results
+                .filter((r) => r.status === "fulfilled")
+                .map((r) => r.value),
+            failed: results
+                .filter((r) => r.status === "rejected")
+                .map((r) => r.reason),
         });
     }
     catch (err) {

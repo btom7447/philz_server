@@ -10,6 +10,7 @@ export interface ITourRequest extends Document {
   approvedBy?: mongoose.Types.ObjectId;
   rescheduled?: boolean;
   meetLink?: string;
+  isDeleted: boolean;
 }
 
 const tourRequestSchema: Schema<ITourRequest> = new Schema(
@@ -38,6 +39,7 @@ const tourRequestSchema: Schema<ITourRequest> = new Schema(
     approvedBy: { type: Schema.Types.ObjectId, ref: "User" },
     rescheduled: { type: Boolean, default: false },
     meetLink: { type: String },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
